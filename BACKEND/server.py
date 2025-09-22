@@ -87,6 +87,56 @@ def jwt_required(f):
 def home():
     return jsonify({"message": "CineMax API funcionando", "status": "ok"})
 
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"success": False, "message": "No se enviaron datos"}), 400
+        
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name')
+        role = data.get('role', 'employee')  # Por defecto empleado
+        
+        if not email or not password or not name:
+            return jsonify({"success": False, "message": "Email, password y nombre son requeridos"}), 400
+        
+        # Verificar si el usuario ya existe
+        existing_user = next((u for u in users if u['email'] == email), None)
+        if existing_user:
+            return jsonify({"success": False, "message": "El usuario ya existe"}), 409
+        
+        # Crear nuevo usuario
+        new_user = {
+            "id": len(users) + 1,
+            "email": email,
+            "password": password,  # En producción usar hash
+            "name": name,
+            "role": role,
+            "permissions": ["all"] if role == "admin" else ["read"]
+        }
+        
+        users.append(new_user)
+        
+        return jsonify({
+            "success": True,
+            "message": "Usuario registrado exitosamente",
+            "data": {
+                "user": {
+                    "id": new_user["id"],
+                    "name": new_user["name"],
+                    "email": new_user["email"],
+                    "role": new_user["role"],
+                    "permissions": new_user["permissions"]
+                }
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": "Error interno del servidor"}), 500
+
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     try:
@@ -101,32 +151,36 @@ def login():
         if not email or not password:
             return jsonify({"success": False, "message": "Email y password son requeridos"}), 400
         
-        # Buscar usuario
-        user = next((u for u in users if u['email'] == email and u['password'] == password), None)
+        # Buscar usuario por email primero
+        user = next((u for u in users if u['email'] == email), None)
         
-        if user:
-            # Generar JWT token
-            access_token = generate_jwt_token(user)
-            
-            return jsonify({
-                "success": True,
-                "message": "Login exitoso",
-                "data": {
-                    "user": {
-                        "id": user["id"],
-                        "name": user["name"],
-                        "email": user["email"],
-                        "role": user["role"],
-                        "permissions": user["permissions"]
-                    },
-                    "access_token": access_token,
-                    "token_type": "Bearer",
-                    "expires_in": 86400  # 24 horas en segundos
-                }
-            })
-        else:
-            return jsonify({"success": False, "message": "Credenciales incorrectas"}), 401
-            
+        if not user:
+            return jsonify({"success": False, "message": "Usuario no encontrado"}), 401
+        
+        # Verificar contraseña
+        if user['password'] != password:
+            return jsonify({"success": False, "message": "Contraseña incorrecta"}), 401
+        
+        # Si llegamos aquí, login exitoso
+        access_token = generate_jwt_token(user)
+        
+        return jsonify({
+            "success": True,
+            "message": "Login exitoso",
+            "data": {
+                "user": {
+                    "id": user["id"],
+                    "name": user["name"],
+                    "email": user["email"],
+                    "role": user["role"],
+                    "permissions": user["permissions"]
+                },
+                "access_token": access_token,
+                "token_type": "Bearer",
+                "expires_in": 86400
+            }
+        })
+        
     except Exception as e:
         return jsonify({"success": False, "message": "Error interno del servidor"}), 500
 
@@ -157,7 +211,12 @@ def get_profile():
             "permissions": user_data['permissions']
         }
     })
-
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    # Solo para debug - quitar en producción
+    return jsonify({
+        "users": [{"email": u["email"], "role": u["role"]} for u in users]
+    })
 @app.route('/api/admin-only', methods=['GET'])
 @jwt_required
 def admin_only():

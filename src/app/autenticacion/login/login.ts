@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router,RouterModule  } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 interface LoginCredentials {
@@ -32,7 +32,7 @@ interface ConnectionStatus {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, RouterModule],
   templateUrl: './login.html',
   styleUrls: ['./login.css'],
   encapsulation: ViewEncapsulation.None  // Esto hace que los estilos se apliquen globalmente
@@ -99,26 +99,40 @@ export class Login implements OnInit {
   }
 
   private async authenticateUser(credentials: LoginCredentials): Promise<LoginResponse> {
-    // Usar tu API real de Flask
-    try {
-      const response = await this.http.post<any>(`${this.apiUrl}/auth/login`, {
-        email: credentials.email,
-        password: credentials.password,
-        rememberMe: credentials.rememberMe
-      }).toPromise();
+  console.log('Enviando credenciales:', {
+    email: credentials.email,
+    password: credentials.password ? '***' : 'VACÍO'
+  });
 
-      return response as LoginResponse;
-    } catch (error: any) {
-      if (error.status === 400 || error.status === 401) {
-        return {
-          success: false,
-          message: error.error.message || 'Credenciales inválidas'
-        };
-      }
+  try {
+    const response = await this.http.post<any>(`${this.apiUrl}/auth/login`, {
+      email: credentials.email,
+      password: credentials.password,
+      rememberMe: credentials.rememberMe
+    }).toPromise();
+
+    console.log('Login exitoso:', response);
+    return response as LoginResponse;
+  } catch (error: any) {
+    console.log('Error completo:', error);
+    console.log('Status:', error.status);
+    console.log('Mensaje del servidor:', error.error);
+    
+    if (error.status === 401) {
+      return {
+        success: false,
+        message: error.error?.message || 'Credenciales incorrectas'
+      };
+    } else if (error.status === 400) {
+      return {
+        success: false,
+        message: error.error?.message || 'Datos incompletos'
+      };
+    } else {
       throw error;
     }
   }
-
+}
   private validateForm(): boolean {
     let isValid = true;
 
@@ -231,7 +245,7 @@ export class Login implements OnInit {
       if (userData.name) {
         this.showAlert('Sesión activa encontrada', 'success');
         setTimeout(() => {
-          this.router.navigate(['/peliculas']);
+          this.router.navigate(['/dashboard']); 
         }, 1000);
       }
     }
