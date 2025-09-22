@@ -99,43 +99,24 @@ export class Login implements OnInit {
   }
 
   private async authenticateUser(credentials: LoginCredentials): Promise<LoginResponse> {
-    // Simulación de autenticación (reemplaza con tu API real)
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Credenciales de prueba
-        const validCredentials = [
-          { email: 'admin@cinemax.com', password: 'admin123', role: 'admin' },
-          { email: 'empleado@cinemax.com', password: 'emp123', role: 'employee' }
-        ];
+    // Usar tu API real de Flask
+    try {
+      const response = await this.http.post<any>(`${this.apiUrl}/auth/login`, {
+        email: credentials.email,
+        password: credentials.password,
+        rememberMe: credentials.rememberMe
+      }).toPromise();
 
-        const user = validCredentials.find(
-          cred => cred.email === credentials.email && cred.password === credentials.password
-        );
-
-        if (user) {
-          resolve({
-            success: true,
-            message: 'Login exitoso',
-            data: {
-              user: {
-                name: user.role === 'admin' ? 'Administrador' : 'Empleado',
-                email: user.email,
-                role: user.role,
-                permissions: user.role === 'admin' 
-                  ? ['create', 'read', 'update', 'delete']
-                  : ['read', 'update']
-              },
-              access_token: 'fake-jwt-token-' + Date.now()
-            }
-          });
-        } else {
-          resolve({
-            success: false,
-            message: 'Credenciales inválidas'
-          });
-        }
-      }, 1500);
-    });
+      return response as LoginResponse;
+    } catch (error: any) {
+      if (error.status === 400 || error.status === 401) {
+        return {
+          success: false,
+          message: error.error.message || 'Credenciales inválidas'
+        };
+      }
+      throw error;
+    }
   }
 
   private validateForm(): boolean {
@@ -179,7 +160,7 @@ export class Login implements OnInit {
 
     // Redirigir al dashboard después de 1.5 segundos
     setTimeout(() => {
-      this.router.navigate(['/peliculas']); // Redirige a la página de películas
+      this.router.navigate(['/dashboard']); // Cambiado a dashboard
     }, 1500);
   }
 
@@ -223,13 +204,12 @@ export class Login implements OnInit {
 
   private async checkConnection() {
     try {
-      // Simulación de verificación de conexión
-      setTimeout(() => {
-        this.connectionStatus = {
-          isOnline: true,
-          message: 'Conectado'
-        };
-      }, 1000);
+      // Verificar conexión con tu servidor Flask
+      const response = await this.http.get(`${this.apiUrl.replace('/api', '')}`).toPromise();
+      this.connectionStatus = {
+        isOnline: true,
+        message: 'Conectado'
+      };
     } catch (error) {
       this.connectionStatus = {
         isOnline: false,
