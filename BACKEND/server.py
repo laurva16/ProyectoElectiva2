@@ -238,5 +238,86 @@ def admin_only():
         }
     })
 
+# ==============================
+# GESTIÓN DE SALAS
+# ==============================
+
+# "Base de datos" en memoria para salas
+salas = [
+    {"id": 1, "nombre": "Sala Principal", "capacidad": 100},
+    {"id": 2, "nombre": "Sala VIP", "capacidad": 50}
+]
+
+@app.route('/api/salas', methods=['GET'])
+@jwt_required
+def listar_salas():
+    """Listar todas las salas"""
+    return jsonify({
+        "success": True,
+        "data": salas
+    })
+
+
+@app.route('/api/salas', methods=['POST'])
+@jwt_required
+def crear_sala():
+    """Crear nueva sala"""
+    data = request.get_json()
+    if not data or "nombre" not in data or "capacidad" not in data:
+        return jsonify({"success": False, "message": "Datos incompletos"}), 400
+
+    nueva_sala = {
+        "id": len(salas) + 1,
+        "nombre": data["nombre"],
+        "capacidad": data["capacidad"]
+    }
+    salas.append(nueva_sala)
+
+    return jsonify({
+        "success": True,
+        "message": "Sala creada exitosamente",
+        "data": nueva_sala
+    })
+
+
+@app.route('/api/salas/<int:sala_id>', methods=['PUT'])
+@jwt_required
+def actualizar_sala(sala_id):
+    """Actualizar una sala existente"""
+    data = request.get_json()
+    sala = next((s for s in salas if s["id"] == sala_id), None)
+
+    if not sala:
+        return jsonify({"success": False, "message": "Sala no encontrada"}), 404
+
+    if "nombre" in data:
+        sala["nombre"] = data["nombre"]
+    if "capacidad" in data:
+        sala["capacidad"] = data["capacidad"]
+
+    return jsonify({
+        "success": True,
+        "message": "Sala actualizada exitosamente",
+        "data": sala
+    })
+
+
+@app.route('/api/salas/<int:sala_id>', methods=['DELETE'])
+@jwt_required
+def eliminar_sala(sala_id):
+    """Eliminar una sala"""
+    global salas
+    sala = next((s for s in salas if s["id"] == sala_id), None)
+
+    if not sala:
+        return jsonify({"success": False, "message": "Sala no encontrada"}), 404
+
+    salas = [s for s in salas if s["id"] != sala_id]
+
+    return jsonify({
+        "success": True,
+        "message": f"Sala con ID {sala_id} eliminada correctamente"
+    })
+
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
