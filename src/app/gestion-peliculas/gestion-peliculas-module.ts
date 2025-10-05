@@ -13,6 +13,10 @@ const routes: Routes = [
     loadComponent: () => import('./crear-peliculas/crear-peliculas').then(m => m.CrearPeliculas)
   },
   {
+    path: 'editar/:id',
+    loadComponent: () => import('./editar-peliculas/editar-peliculas').then(m => m.EditarPeliculas)
+  },
+  {
     path: '',
     redirectTo: 'listar',
     pathMatch: 'full'

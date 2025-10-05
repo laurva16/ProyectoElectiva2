@@ -18,36 +18,36 @@ interface ModuleCard {
   template: `
     <div class="dashboard-container">
       <!-- Sidebar -->
-      <aside class="sidebar">
+      <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
         <div class="logo">
           <i class="fas fa-film"></i>
-          <span>CineMax</span>
+          <span *ngIf="!sidebarCollapsed">CineMax</span>
         </div>
         
         <nav class="sidebar-nav">
           <a class="nav-item active">
             <i class="fas fa-home"></i>
-            <span>Dashboard</span>
+            <span *ngIf="!sidebarCollapsed">Dashboard</span>
           </a>
           <a class="nav-item" [routerLink]="['/peliculas/listar']">
             <i class="fas fa-film"></i>
-            <span>Películas</span>
+            <span *ngIf="!sidebarCollapsed">Películas</span>
           </a>
           <a class="nav-item" [routerLink]="['/salas/listar']">
             <i class="fas fa-theater-masks"></i>
-            <span>Salas</span>
+            <span *ngIf="!sidebarCollapsed">Salas</span>
           </a>
           <a class="nav-item" [routerLink]="['/tickets/listar']">
             <i class="fas fa-ticket-alt"></i>
-            <span>Tickets</span>
+            <span *ngIf="!sidebarCollapsed">Tickets</span>
           </a>
           <a *ngIf="currentUser?.role === 'admin'" class="nav-item" [routerLink]="['/usuarios/listar']">
             <i class="fas fa-users"></i>
-            <span>Usuarios</span>
+            <span *ngIf="!sidebarCollapsed">Usuarios</span>
           </a>
           <a *ngIf="currentUser?.role === 'admin'" class="nav-item" [routerLink]="['/reportes/listar']">
             <i class="fas fa-chart-bar"></i>
-            <span>Reportes</span>
+            <span *ngIf="!sidebarCollapsed">Reportes</span>
           </a>
         </nav>
 
@@ -59,13 +59,19 @@ interface ModuleCard {
       </aside>
 
       <!-- Main Content -->
-      <main class="main-content">
+      <main class="main-content" [class.expanded]="sidebarCollapsed">
         <!-- Header -->
         <header class="header">
-          <div class="search-bar">
+          <div class="header-left">
+            <button class="toggle-sidebar-btn" (click)="toggleSidebar()">
+              <i class="fas" [class.fa-bars]="sidebarCollapsed" [class.fa-times]="!sidebarCollapsed"></i>
+            </button>
+            <div class="search-bar">
             <i class="fas fa-search"></i>
             <input type="text" placeholder="Buscar películas, salas, tickets...">
           </div>
+          </div>
+        
           
           <div class="header-actions">
             <button class="notification-btn">
@@ -211,6 +217,9 @@ interface ModuleCard {
       left: 0;
       top: 0;
     }
+    .sidebar.collapsed {
+      width: 80px;
+    }
 
     .logo {
       padding: 1.5rem;
@@ -221,6 +230,7 @@ interface ModuleCard {
       font-weight: 700;
       color: #e50914;
       border-bottom: 1px solid #2a2a2a;
+      justify-content: center;
     }
 
     .sidebar-nav {
@@ -239,6 +249,11 @@ interface ModuleCard {
       transition: all 0.2s;
       cursor: pointer;
       border-left: 3px solid transparent;
+      white-space: nowrap;
+    }
+    .sidebar.collapsed .nav-item {
+      justify-content: center;
+      padding: 0.875rem 0.5rem;
     }
 
     .nav-item:hover {
@@ -287,8 +302,11 @@ interface ModuleCard {
       flex: 1;
       margin-left: 260px;
       overflow-y: auto;
+      transition: margin-left 0.3s ease;
     }
-
+    .main-content.expanded {
+      margin-left: 80px;
+    }
     /* Header */
     .header {
       display: flex;
@@ -637,10 +655,36 @@ interface ModuleCard {
       color: #666;
       font-size: 0.85rem;
     }
+        .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      max-width: 600px;
+    }
+
+    .toggle-sidebar-btn {
+      background: #1f1f1f;
+      border: 1px solid #2a2a2a;
+      color: #a0a0a0;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 1.1rem;
+    }
+
+    .toggle-sidebar-btn:hover {
+      background: rgba(229, 9, 20, 0.1);
+      border-color: #e50914;
+      color: #e50914;
+    }
   `]
 })
 export class DashboardComponent implements OnInit {
   currentUser: any = null;
+  sidebarCollapsed: boolean = false;
   
   modules: ModuleCard[] = [
     {
@@ -711,5 +755,8 @@ export class DashboardComponent implements OnInit {
     sessionStorage.removeItem('cinemax_token');
     sessionStorage.removeItem('cinemax_user');
     this.router.navigate(['/login']);
+  }
+  toggleSidebar() {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
   }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 interface Pelicula {
   id?: number;
@@ -41,11 +41,23 @@ export class ListarPeliculas implements OnInit {
     this.cargarPeliculas();
   }
 
-  cargarPeliculas() {
-    this.loading = true;
-    // Por ahora datos de ejemplo - conectarás con tu backend
-    setTimeout(() => {
-      this.peliculas = [
+cargarPeliculas() {
+  this.loading = true;
+  
+  const token = localStorage.getItem('cinemax_token') || 
+                sessionStorage.getItem('cinemax_token');
+  
+  const headers = new HttpHeaders({
+    'Authorization': `Bearer ${token}`
+  });
+
+  this.http.get<any>(this.apiUrl, { headers }).subscribe({
+    next: (response) => {
+      // Las películas del backend vienen en response.data
+      const peliculasBackend = response.data || [];
+      
+      // Datos estáticos (por si el backend no tiene datos aún)
+      const peliculasEstaticas = [
         {
           id: 1,
           titulo: 'Spider-Man: Across the Spider-Verse',
@@ -88,27 +100,57 @@ export class ListarPeliculas implements OnInit {
         }
       ];
       
+      // Combinar: películas del backend + estáticas
+      // Filtramos duplicados por ID
+      const peliculasCombinadas = [...peliculasBackend];
+      
+      peliculasEstaticas.forEach(peliEstatica => {
+        const existe = peliculasCombinadas.some(p => p.id === peliEstatica.id);
+        if (!existe) {
+          peliculasCombinadas.push(peliEstatica);
+        }
+      });
+      
+      this.peliculas = peliculasCombinadas;
       this.peliculasFiltradas = [...this.peliculas];
       this.extraerGeneros();
       this.loading = false;
-    }, 500);
-
-    // Cuando conectes con tu backend, usa esto:
-    /*
-    this.http.get<Pelicula[]>(this.apiUrl).subscribe({
-      next: (data) => {
-        this.peliculas = data;
-        this.peliculasFiltradas = [...this.peliculas];
-        this.extraerGeneros();
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error al cargar películas:', error);
-        this.loading = false;
-      }
-    });
-    */
-  }
+      
+      console.log('Películas cargadas:', this.peliculas.length);
+    },
+    error: (error) => {
+      console.error('Error al cargar películas:', error);
+      
+      // Si falla la API, usar solo datos estáticos
+      this.peliculas = [
+        {
+          id: 1,
+          titulo: 'Spider-Man: Across the Spider-Verse',
+          descripcion: 'Miles Morales catapulta a través del Multiverso',
+          duracion: 140,
+          genero: 'Animación',
+          clasificacion: 'PG-13',
+          imagen_url: 'https://image.tmdb.org/t/p/w500/gh4cZbhZxyTbgxQPxD0dOudNPTn.jpg',
+          estado: 'cartelera'
+        },
+        {
+          id: 2,
+          titulo: 'The Flash',
+          descripcion: 'Barry Allen usa sus superpoderes para viajar en el tiempo',
+          duracion: 144,
+          genero: 'Acción',
+          clasificacion: 'PG-13',
+          imagen_url: 'https://image.tmdb.org/t/p/w500/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
+          estado: 'cartelera'
+        }
+      ];
+      
+      this.peliculasFiltradas = [...this.peliculas];
+      this.extraerGeneros();
+      this.loading = false;
+    }
+  });
+}
 
   extraerGeneros() {
     const generosUnicos = new Set(this.peliculas.map(p => p.genero));
@@ -140,6 +182,7 @@ export class ListarPeliculas implements OnInit {
     });
   }
 
+
   verDetalle(id: number) {
     // Navegar a detalle de película
     console.log('Ver detalle de película:', id);
@@ -151,12 +194,29 @@ export class ListarPeliculas implements OnInit {
   }
 
   eliminarPelicula(id: number) {
-    if (confirm('¿Estás seguro de eliminar esta película?')) {
-      // Llamar al backend para eliminar
-      console.log('Eliminar película:', id);
-      this.peliculas = this.peliculas.filter(p => p.id !== id);
-      this.filtrarPeliculas();
+    if (!confirm('¿Estás seguro de que deseas eliminar esta película? Esta acción no se puede deshacer.')) {
+      return;
     }
+
+    const token = localStorage.getItem('cinemax_token') || 
+                  sessionStorage.getItem('cinemax_token');
+    
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    this.http.delete(`${this.apiUrl}/${id}`, { headers }).subscribe({
+      next: (response: any) => {
+        console.log('Película eliminada:', response);
+        // Recargar la lista
+        this.cargarPeliculas();
+        alert('Película eliminada exitosamente');
+      },
+      error: (error) => {
+        console.error('Error al eliminar película:', error);
+        alert('Error al eliminar la película: ' + (error.error?.message || 'Intenta nuevamente'));
+      }
+    });
   }
 
   crearNuevaPelicula() {

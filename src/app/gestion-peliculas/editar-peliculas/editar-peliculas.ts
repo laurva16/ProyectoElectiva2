@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 interface Pelicula {
+  id?: number;
   titulo: string;
   descripcion: string;
   duracion: number;
@@ -20,17 +21,19 @@ interface Pelicula {
 }
 
 @Component({
-  selector: 'app-crear-peliculas',
+  selector: 'app-editar-peliculas',
   standalone: true,
   imports: [CommonModule, RouterModule, ReactiveFormsModule],
-  templateUrl: './crear-peliculas.html',
-  styleUrl: './crear-peliculas.css'
+  templateUrl: './editar-peliculas.html',
+  styleUrl: './editar-peliculas.css'
 })
-export class CrearPeliculas implements OnInit {
+export class EditarPeliculas implements OnInit {
   peliculaForm!: FormGroup;
   loading = false;
+  loadingData = true;
   errorMessage = '';
   successMessage = '';
+  peliculaId: number = 0;
 
   generos = [
     'Acción',
@@ -54,11 +57,20 @@ export class CrearPeliculas implements OnInit {
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
     this.initForm();
+    this.peliculaId = Number(this.route.snapshot.paramMap.get('id'));
+    
+    if (this.peliculaId) {
+      this.cargarPelicula();
+    } else {
+      this.errorMessage = 'ID de película no válido';
+      this.loadingData = false;
+    }
   }
 
   initForm() {
@@ -75,6 +87,43 @@ export class CrearPeliculas implements OnInit {
       fecha_estreno: [''],
       estado: ['disponible', Validators.required],
       precio: ['', [Validators.min(0), Validators.max(999.99)]]
+    });
+  }
+
+  cargarPelicula() {
+    this.loadingData = true;
+    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
+    
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    this.http.get<any>(`${this.apiUrl}/${this.peliculaId}`, { headers }).subscribe({
+      next: (response) => {
+        this.loadingData = false;
+        const pelicula = response.data;
+        
+        // Llenar el formulario con los datos de la película
+        this.peliculaForm.patchValue({
+          titulo: pelicula.titulo,
+          descripcion: pelicula.descripcion,
+          duracion: pelicula.duracion,
+          genero: pelicula.genero,
+          clasificacion: pelicula.clasificacion,
+          director: pelicula.director || '',
+          actores: pelicula.actores || '',
+          imagen_url: pelicula.imagen_url || '',
+          trailer_url: pelicula.trailer_url || '',
+          fecha_estreno: pelicula.fecha_estreno || '',
+          estado: pelicula.estado || 'disponible',
+          precio: pelicula.precio || ''
+        });
+      },
+      error: (error) => {
+        this.loadingData = false;
+        console.error('Error al cargar película:', error);
+        this.errorMessage = 'No se pudo cargar la película. Verifica que exista.';
+      }
     });
   }
 
@@ -98,10 +147,10 @@ export class CrearPeliculas implements OnInit {
 
     const peliculaData: Pelicula = this.peliculaForm.value;
 
-    this.http.post(this.apiUrl, peliculaData, { headers }).subscribe({
+    this.http.put(`${this.apiUrl}/${this.peliculaId}`, peliculaData, { headers }).subscribe({
       next: (response: any) => {
         this.loading = false;
-        this.successMessage = 'Película creada exitosamente';
+        this.successMessage = 'Película actualizada exitosamente';
         
         setTimeout(() => {
           this.router.navigate(['/peliculas/listar']);
@@ -109,8 +158,8 @@ export class CrearPeliculas implements OnInit {
       },
       error: (error) => {
         this.loading = false;
-        console.error('Error al crear película:', error);
-        this.errorMessage = error.error?.message || 'Error al crear la película. Intenta nuevamente.';
+        console.error('Error al actualizar película:', error);
+        this.errorMessage = error.error?.message || 'Error al actualizar la película. Intenta nuevamente.';
       }
     });
   }

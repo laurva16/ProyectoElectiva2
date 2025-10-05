@@ -1,17 +1,23 @@
-<div class="crear-pelicula-container">
+<div class="editar-pelicula-container">
   <!-- Header -->
   <header class="page-header">
     <button class="btn-back" (click)="volver()">
       <i class="fas fa-arrow-left"></i>
     </button>
     <div class="header-info">
-      <h1>Crear Nueva Película</h1>
-      <p>Agrega una película al catálogo del cine</p>
+      <h1>Editar Película</h1>
+      <p>Actualiza la información de la película</p>
     </div>
   </header>
 
+  <!-- Loading inicial -->
+  <div *ngIf="loadingData" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando datos de la película...</p>
+  </div>
+
   <!-- Alert Messages -->
-  <div *ngIf="errorMessage" class="alert alert-error">
+  <div *ngIf="errorMessage && !loadingData" class="alert alert-error">
     <i class="fas fa-exclamation-circle"></i>
     {{ errorMessage }}
   </div>
@@ -22,7 +28,7 @@
   </div>
 
   <!-- Formulario -->
-  <form [formGroup]="peliculaForm" (ngSubmit)="onSubmit()" class="pelicula-form">
+  <form *ngIf="!loadingData" [formGroup]="peliculaForm" (ngSubmit)="onSubmit()" class="pelicula-form">
     
     <!-- Información Básica -->
     <div class="form-section">
@@ -164,7 +170,6 @@
           <span *ngIf="isFieldInvalid('imagen_url')" class="error-message">
             {{ getFieldError('imagen_url') }}
           </span>
-          <small class="help-text">Usa servicios como TMDB o IMDb para obtener imágenes de calidad</small>
         </div>
       </div>
 
@@ -241,7 +246,7 @@
       
       <button type="submit" class="btn-primary" [disabled]="loading || peliculaForm.invalid">
         <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-save]="!loading"></i>
-        {{ loading ? 'Guardando...' : 'Crear Película' }}
+        {{ loading ? 'Actualizando...' : 'Guardar Cambios' }}
       </button>
     </div>
   </form>
