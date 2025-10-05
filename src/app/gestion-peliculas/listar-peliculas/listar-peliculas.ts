@@ -11,7 +11,12 @@ interface Pelicula {
   genero: string;
   clasificacion: string;
   imagen_url?: string;
+  trailer_url?: string;  // Agregado
   estado: string;
+   director?: string;         // AGREGAR
+  actores?: string;          // AGREGAR
+  fecha_estreno?: string;    // AGREGAR
+  precio?: number;           // AGREGAR
 }
 
 @Component({
@@ -28,8 +33,8 @@ export class ListarPeliculas implements OnInit {
   searchTerm = '';
   filtroGenero = '';
   generos: string[] = [];
+  peliculaSeleccionada: Pelicula | null = null;
 
-  // URL de tu backend - AJÚSTALA según tu configuración
   private apiUrl = 'http://localhost:5000/api/peliculas';
 
   constructor(
@@ -41,116 +46,118 @@ export class ListarPeliculas implements OnInit {
     this.cargarPeliculas();
   }
 
-cargarPeliculas() {
-  this.loading = true;
-  
-  const token = localStorage.getItem('cinemax_token') || 
-                sessionStorage.getItem('cinemax_token');
-  
-  const headers = new HttpHeaders({
-    'Authorization': `Bearer ${token}`
-  });
+  cargarPeliculas() {
+    this.loading = true;
+    
+    const token = localStorage.getItem('cinemax_token') || 
+                  sessionStorage.getItem('cinemax_token');
+    
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
 
-  this.http.get<any>(this.apiUrl, { headers }).subscribe({
-    next: (response) => {
-      // Las películas del backend vienen en response.data
-      const peliculasBackend = response.data || [];
-      
-      // Datos estáticos (por si el backend no tiene datos aún)
-      const peliculasEstaticas = [
-        {
-          id: 1,
-          titulo: 'Spider-Man: Across the Spider-Verse',
-          descripcion: 'Miles Morales catapulta a través del Multiverso',
-          duracion: 140,
-          genero: 'Animación',
-          clasificacion: 'PG-13',
-          imagen_url: 'https://image.tmdb.org/t/p/w500/gh4cZbhZxyTbgxQPxD0dOudNPTn.jpg',
-          estado: 'cartelera'
-        },
-        {
-          id: 2,
-          titulo: 'The Flash',
-          descripcion: 'Barry Allen usa sus superpoderes para viajar en el tiempo',
-          duracion: 144,
-          genero: 'Acción',
-          clasificacion: 'PG-13',
-          imagen_url: 'https://image.tmdb.org/t/p/w500/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
-          estado: 'cartelera'
-        },
-        {
-          id: 3,
-          titulo: 'Elemental',
-          descripcion: 'En una ciudad donde los elementos viven juntos',
-          duracion: 109,
-          genero: 'Animación',
-          clasificacion: 'PG',
-          imagen_url: 'https://image.tmdb.org/t/p/w500/6oH378KUfCEitzJkm07r97L0RsZ.jpg',
-          estado: 'cartelera'
-        },
-        {
-          id: 4,
-          titulo: 'Interstellar',
-          descripcion: 'Un grupo de exploradores viaja a través de un agujero de gusano',
-          duracion: 169,
-          genero: 'Ciencia Ficción',
-          clasificacion: 'PG-13',
-          imagen_url: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
-          estado: 'disponible'
-        }
-      ];
-      
-      // Combinar: películas del backend + estáticas
-      // Filtramos duplicados por ID
-      const peliculasCombinadas = [...peliculasBackend];
-      
-      peliculasEstaticas.forEach(peliEstatica => {
-        const existe = peliculasCombinadas.some(p => p.id === peliEstatica.id);
-        if (!existe) {
-          peliculasCombinadas.push(peliEstatica);
-        }
-      });
-      
-      this.peliculas = peliculasCombinadas;
-      this.peliculasFiltradas = [...this.peliculas];
-      this.extraerGeneros();
-      this.loading = false;
-      
-      console.log('Películas cargadas:', this.peliculas.length);
-    },
-    error: (error) => {
-      console.error('Error al cargar películas:', error);
-      
-      // Si falla la API, usar solo datos estáticos
-      this.peliculas = [
-        {
-          id: 1,
-          titulo: 'Spider-Man: Across the Spider-Verse',
-          descripcion: 'Miles Morales catapulta a través del Multiverso',
-          duracion: 140,
-          genero: 'Animación',
-          clasificacion: 'PG-13',
-          imagen_url: 'https://image.tmdb.org/t/p/w500/gh4cZbhZxyTbgxQPxD0dOudNPTn.jpg',
-          estado: 'cartelera'
-        },
-        {
-          id: 2,
-          titulo: 'The Flash',
-          descripcion: 'Barry Allen usa sus superpoderes para viajar en el tiempo',
-          duracion: 144,
-          genero: 'Acción',
-          clasificacion: 'PG-13',
-          imagen_url: 'https://image.tmdb.org/t/p/w500/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
-          estado: 'cartelera'
-        }
-      ];
-      
-      this.peliculasFiltradas = [...this.peliculas];
-      this.extraerGeneros();
-      this.loading = false;
-    }
-  });
-}
+    this.http.get<any>(this.apiUrl, { headers }).subscribe({
+      next: (response) => {
+        const peliculasBackend = response.data || [];
+        
+        // Datos estáticos con URLs de trailers
+        const peliculasEstaticas = [
+          {
+            id: 1,
+            titulo: 'Spider-Man: Across the Spider-Verse',
+            descripcion: 'Miles Morales catapulta a través del Multiverso',
+            duracion: 140,
+            genero: 'Animación',
+            clasificacion: 'PG-13',
+            imagen_url: 'https://image.tmdb.org/t/p/w500/gh4cZbhZxyTbgxQPxD0dOudNPTn.jpg',
+            trailer_url: 'https://www.youtube.com/watch?v=cqGjhVJWtEg',
+            estado: 'cartelera'
+          },
+          {
+            id: 2,
+            titulo: 'The Flash',
+            descripcion: 'Barry Allen usa sus superpoderes para viajar en el tiempo',
+            duracion: 144,
+            genero: 'Acción',
+            clasificacion: 'PG-13',
+            imagen_url: 'https://image.tmdb.org/t/p/w500/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
+            trailer_url: 'https://www.youtube.com/watch?v=hebWYacbdvc',
+            estado: 'cartelera'
+          },
+          {
+            id: 3,
+            titulo: 'Elemental',
+            descripcion: 'En una ciudad donde los elementos viven juntos',
+            duracion: 109,
+            genero: 'Animación',
+            clasificacion: 'PG',
+            imagen_url: 'https://image.tmdb.org/t/p/w500/6oH378KUfCEitzJkm07r97L0RsZ.jpg',
+            trailer_url: 'https://www.youtube.com/watch?v=hXzcyx9V0xw',
+            estado: 'cartelera'
+          },
+          {
+            id: 4,
+            titulo: 'Interstellar',
+            descripcion: 'Un grupo de exploradores viaja a través de un agujero de gusano',
+            duracion: 169,
+            genero: 'Ciencia Ficción',
+            clasificacion: 'PG-13',
+            imagen_url: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
+            trailer_url: 'https://www.youtube.com/watch?v=zSWdZVtXT7E',
+            estado: 'disponible'
+          }
+        ];
+        
+        const peliculasCombinadas = [...peliculasBackend];
+        
+        peliculasEstaticas.forEach(peliEstatica => {
+          const existe = peliculasCombinadas.some(p => p.id === peliEstatica.id);
+          if (!existe) {
+            peliculasCombinadas.push(peliEstatica);
+          }
+        });
+        
+        this.peliculas = peliculasCombinadas;
+        this.peliculasFiltradas = [...this.peliculas];
+        this.extraerGeneros();
+        this.loading = false;
+        
+        console.log('Películas cargadas:', this.peliculas.length);
+      },
+      error: (error) => {
+        console.error('Error al cargar películas:', error);
+        
+        this.peliculas = [
+          {
+            id: 1,
+            titulo: 'Spider-Man: Across the Spider-Verse',
+            descripcion: 'Miles Morales catapulta a través del Multiverso',
+            duracion: 140,
+            genero: 'Animación',
+            clasificacion: 'PG-13',
+            imagen_url: 'https://image.tmdb.org/t/p/w500/gh4cZbhZxyTbgxQPxD0dOudNPTn.jpg',
+            trailer_url: 'https://www.youtube.com/watch?v=cqGjhVJWtEg',
+            estado: 'cartelera'
+          },
+          {
+            id: 2,
+            titulo: 'The Flash',
+            descripcion: 'Barry Allen usa sus superpoderes para viajar en el tiempo',
+            duracion: 144,
+            genero: 'Acción',
+            clasificacion: 'PG-13',
+            imagen_url: 'https://image.tmdb.org/t/p/w500/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
+            trailer_url: 'https://www.youtube.com/watch?v=hebWYacbdvc',
+            estado: 'cartelera'
+          }
+        ];
+        
+        this.peliculasFiltradas = [...this.peliculas];
+        this.extraerGeneros();
+        this.loading = false;
+      }
+    });
+  }
 
   extraerGeneros() {
     const generosUnicos = new Set(this.peliculas.map(p => p.genero));
@@ -182,18 +189,49 @@ cargarPeliculas() {
     });
   }
 
-
-  verDetalle(id: number) {
-    // Navegar a detalle de película
-    console.log('Ver detalle de película:', id);
+  // Método para abrir trailer
+  abrirTrailer(trailerUrl: string | undefined, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (trailerUrl && trailerUrl.trim() !== '') {
+      window.open(trailerUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('Esta película no tiene trailer disponible');
+    }
   }
 
-  editarPelicula(id: number) {
-    // Navegar a editar película
+  // Verificar si tiene trailer
+  tieneTrailer(pelicula: Pelicula): boolean {
+    return !!(pelicula.trailer_url && pelicula.trailer_url.trim() !== '');
+  }
+
+  verDetalle(pelicula: Pelicula, event?: Event) {
+  if (event) {
+    event.stopPropagation();
+  }
+  this.peliculaSeleccionada = pelicula;
+  document.body.style.overflow = 'hidden';
+}
+
+cerrarDetalle() {
+  this.peliculaSeleccionada = null;
+  document.body.style.overflow = 'auto';
+}
+
+  editarPelicula(id: number, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
     this.router.navigate(['/peliculas/editar', id]);
   }
 
-  eliminarPelicula(id: number) {
+  eliminarPelicula(id: number, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+
     if (!confirm('¿Estás seguro de que deseas eliminar esta película? Esta acción no se puede deshacer.')) {
       return;
     }
@@ -208,7 +246,6 @@ cargarPeliculas() {
     this.http.delete(`${this.apiUrl}/${id}`, { headers }).subscribe({
       next: (response: any) => {
         console.log('Película eliminada:', response);
-        // Recargar la lista
         this.cargarPeliculas();
         alert('Película eliminada exitosamente');
       },
@@ -226,4 +263,5 @@ cargarPeliculas() {
   volverDashboard() {
     this.router.navigate(['/dashboard']);
   }
+  
 }

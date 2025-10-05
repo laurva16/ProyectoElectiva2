@@ -279,3 +279,45 @@ select {
     justify-content: center;
   }
 }
+/* Agregar estos estilos al archivo crear-peliculas.css */
+
+/* Input con botón */
+.input-with-button {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+.btn-preview-trailer {
+  width: 48px;
+  background: #e50914;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-preview-trailer:hover:not(:disabled) {
+  background: #b8070f;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
+}
+
+.btn-preview-trailer:disabled {
+  background: #333;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn-preview-trailer i {
+  pointer-events: none;
+}

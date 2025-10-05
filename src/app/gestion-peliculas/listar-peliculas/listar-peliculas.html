@@ -48,20 +48,42 @@
   <!-- Movies Grid -->
   <div *ngIf="!loading" class="movies-grid">
     <div *ngFor="let pelicula of peliculasFiltradas" class="movie-card">
-      <!-- Movie Poster -->
-      <div class="movie-poster">
+      <div class="movie-poster" (click)="verDetalle(pelicula, $event)">
         <img 
           [src]="pelicula.imagen_url || 'https://via.placeholder.com/300x450/1f1f1f/e50914?text=' + pelicula.titulo" 
           [alt]="pelicula.titulo"
         >
         <div class="movie-overlay">
-          <button class="overlay-btn" (click)="verDetalle(pelicula.id!)">
+          <button 
+            *ngIf="tieneTrailer(pelicula)"
+            class="overlay-btn" 
+            (click)="abrirTrailer(pelicula.trailer_url, $event)"
+            title="Ver trailer en YouTube"
+          >
             <i class="fas fa-play"></i>
           </button>
-          <button class="overlay-btn" (click)="editarPelicula(pelicula.id!)">
+          
+          <button 
+            class="overlay-btn" 
+            (click)="verDetalle(pelicula, $event)"
+            title="Ver detalles"
+          >
+            <i class="fas fa-info"></i>
+          </button>
+          
+          <button 
+            class="overlay-btn" 
+            (click)="editarPelicula(pelicula.id!, $event)"
+            title="Editar película"
+          >
             <i class="fas fa-edit"></i>
           </button>
-          <button class="overlay-btn danger" (click)="eliminarPelicula(pelicula.id!)">
+          
+          <button 
+            class="overlay-btn danger" 
+            (click)="eliminarPelicula(pelicula.id!, $event)"
+            title="Eliminar película"
+          >
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -70,8 +92,7 @@
         </span>
       </div>
 
-      <!-- Movie Info -->
-      <div class="movie-info">
+      <div class="movie-info" (click)="verDetalle(pelicula, $event)">
         <h3 class="movie-title">{{ pelicula.titulo }}</h3>
         <p class="movie-description">{{ pelicula.descripcion }}</p>
         
@@ -101,5 +122,111 @@
       <i class="fas fa-plus"></i>
       Agregar Primera Película
     </button>
+  </div>
+
+  <!-- MODAL DE DETALLES -->
+  <div *ngIf="peliculaSeleccionada" class="modal-overlay" (click)="cerrarDetalle()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <!-- Botón cerrar -->
+      <button class="modal-close" (click)="cerrarDetalle()">
+        <i class="fas fa-times"></i>
+      </button>
+
+      <!-- Header con imagen de fondo -->
+      <div class="modal-header" [style.background-image]="'url(' + (peliculaSeleccionada.imagen_url || 'https://via.placeholder.com/1920x1080/1f1f1f/e50914') + ')'">
+        <div class="modal-header-gradient">
+          <div class="modal-header-content">
+            <h2 class="modal-title">{{ peliculaSeleccionada.titulo }}</h2>
+            <div class="modal-header-meta">
+              <span class="badge-clasificacion">{{ peliculaSeleccionada.clasificacion }}</span>
+              <span class="badge-estado" [class.cartelera]="peliculaSeleccionada.estado === 'cartelera'">
+                {{ peliculaSeleccionada.estado === 'cartelera' ? '🔥 En Cartelera' : '📦 Disponible' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cuerpo del modal -->
+      <div class="modal-body">
+        <!-- Acciones principales -->
+        <div class="modal-actions">
+          <button 
+            *ngIf="tieneTrailer(peliculaSeleccionada)" 
+            class="btn-action btn-play" 
+            (click)="abrirTrailer(peliculaSeleccionada.trailer_url)"
+          >
+            <i class="fas fa-play"></i>
+            Ver Trailer
+          </button>
+
+        </div>
+
+        <!-- Descripción -->
+        <div class="modal-section">
+          <h3 class="section-title">Sinopsis</h3>
+          <p class="modal-description">{{ peliculaSeleccionada.descripcion }}</p>
+        </div>
+
+        <!-- Información detallada -->
+        <div class="modal-info-grid">
+          <div class="info-item">
+            <span class="info-label">Duración</span>
+            <span class="info-value">
+              <i class="fas fa-clock"></i>
+              {{ peliculaSeleccionada.duracion }} minutos
+            </span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Género</span>
+            <span class="info-value">
+              <i class="fas fa-tag"></i>
+              {{ peliculaSeleccionada.genero }}
+            </span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Clasificación</span>
+            <span class="info-value">
+              <i class="fas fa-shield-alt"></i>
+              {{ peliculaSeleccionada.clasificacion }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="peliculaSeleccionada.director">
+            <span class="info-label">Director</span>
+            <span class="info-value">
+              <i class="fas fa-user-tie"></i>
+              {{ peliculaSeleccionada.director }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="peliculaSeleccionada.actores">
+            <span class="info-label">Actores</span>
+            <span class="info-value">
+              <i class="fas fa-users"></i>
+              {{ peliculaSeleccionada.actores }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="peliculaSeleccionada.fecha_estreno">
+            <span class="info-label">Estreno</span>
+            <span class="info-value">
+              <i class="fas fa-calendar"></i>
+              {{ peliculaSeleccionada.fecha_estreno }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="peliculaSeleccionada.precio">
+            <span class="info-label">Precio</span>
+            <span class="info-value">
+              <i class="fas fa-dollar-sign"></i>
+              ${{ peliculaSeleccionada.precio }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

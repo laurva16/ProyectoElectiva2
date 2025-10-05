@@ -78,6 +78,14 @@ export class CrearPeliculas implements OnInit {
     });
   }
 
+  // Método para abrir el trailer en una nueva pestaña
+  abrirTrailer() {
+    const trailerUrl = this.peliculaForm.get('trailer_url')?.value;
+    if (trailerUrl && trailerUrl.trim() !== '') {
+      window.open(trailerUrl, '_blank');
+    }
+  }
+
   onSubmit() {
     if (this.peliculaForm.invalid) {
       this.markFormGroupTouched(this.peliculaForm);
