@@ -1,0 +1,41 @@
+/* Contenedor general */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* HEADER */
+.app-header {
+  background-color: #111827;
+  color: white;
+  display: flex;
+  justify-content: center; /* centra horizontalmente */
+  align-items: center;     /* centra verticalmente */
+  height: 80px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+/* MAIN CONTENT */
+.app-main {
+  flex: 1;
+  padding: 20px;
+  background: #ffffff;
+}
+
+/* FOOTER */
+.app-footer {
+  background-color: #111827;
+  color: #d1d5db;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9rem;
+}

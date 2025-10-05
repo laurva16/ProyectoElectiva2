@@ -1,1 +1,105 @@
-<p>listar-peliculas works!</p>
+<div class="peliculas-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volverDashboard()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Gestión de Películas</h1>
+      <p>Administra el catálogo completo de películas</p>
+    </div>
+    <button class="btn-primary" (click)="crearNuevaPelicula()">
+      <i class="fas fa-plus"></i>
+      Nueva Película
+    </button>
+  </header>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        placeholder="Buscar películas por título o descripción..."
+        (input)="buscar($event)"
+      >
+    </div>
+
+    <div class="filter-genre">
+      <select (change)="filtrarPorGenero($event)">
+        <option value="">Todos los géneros</option>
+        <option *ngFor="let genero of generos" [value]="genero">
+          {{ genero }}
+        </option>
+      </select>
+    </div>
+
+    <div class="results-count">
+      <span>{{ peliculasFiltradas.length }}</span> películas encontradas
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando películas...</p>
+  </div>
+
+  <!-- Movies Grid -->
+  <div *ngIf="!loading" class="movies-grid">
+    <div *ngFor="let pelicula of peliculasFiltradas" class="movie-card">
+      <!-- Movie Poster -->
+      <div class="movie-poster">
+        <img 
+          [src]="pelicula.imagen_url || 'https://via.placeholder.com/300x450/1f1f1f/e50914?text=' + pelicula.titulo" 
+          [alt]="pelicula.titulo"
+        >
+        <div class="movie-overlay">
+          <button class="overlay-btn" (click)="verDetalle(pelicula.id!)">
+            <i class="fas fa-play"></i>
+          </button>
+          <button class="overlay-btn" (click)="editarPelicula(pelicula.id!)">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="overlay-btn danger" (click)="eliminarPelicula(pelicula.id!)">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        <span class="movie-badge" [class.active]="pelicula.estado === 'cartelera'">
+          {{ pelicula.estado === 'cartelera' ? '🔥 En Cartelera' : '📦 Disponible' }}
+        </span>
+      </div>
+
+      <!-- Movie Info -->
+      <div class="movie-info">
+        <h3 class="movie-title">{{ pelicula.titulo }}</h3>
+        <p class="movie-description">{{ pelicula.descripcion }}</p>
+        
+        <div class="movie-meta">
+          <span class="meta-item">
+            <i class="fas fa-clock"></i>
+            {{ pelicula.duracion }} min
+          </span>
+          <span class="meta-item">
+            <i class="fas fa-tag"></i>
+            {{ pelicula.genero }}
+          </span>
+          <span class="meta-item classification">
+            {{ pelicula.clasificacion }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && peliculasFiltradas.length === 0" class="empty-state">
+    <i class="fas fa-film"></i>
+    <h3>No se encontraron películas</h3>
+    <p>Intenta con otros términos de búsqueda o agrega una nueva película</p>
+    <button class="btn-primary" (click)="crearNuevaPelicula()">
+      <i class="fas fa-plus"></i>
+      Agregar Primera Película
+    </button>
+  </div>
+</div>
