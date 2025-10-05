@@ -64,11 +64,9 @@ def get_usuarios():
         
         usuarios = Usuario.get_all()
         
-        # Filtrar por rol
         if rol:
             usuarios = [u for u in usuarios if u['role'].lower() == rol.lower()]
         
-        # Búsqueda por nombre o email
         if busqueda:
             busqueda = busqueda.lower()
             usuarios = [
@@ -76,7 +74,6 @@ def get_usuarios():
                 if busqueda in u['name'].lower() or busqueda in u['email'].lower()
             ]
         
-        # Eliminar contraseñas de la respuesta
         for usuario in usuarios:
             usuario.pop('password', None)
         
@@ -107,16 +104,19 @@ def get_usuario(usuario_id):
                 'message': 'Usuario no encontrado'
             }), 404
         
-        # Eliminar contraseña
-        usuario.pop('password', None)
+        # Crear una copia para no modificar el original
+        usuario_data = dict(usuario)
+        usuario_data.pop('password', None)
+        usuario_data.pop('_id', None)
         
         return jsonify({
             'success': True,
             'message': 'Usuario obtenido exitosamente',
-            'data': usuario
+            'data': usuario_data
         }), 200
         
     except Exception as e:
+        print(f"Error al obtener usuario {usuario_id}: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error al obtener usuario: {str(e)}'
@@ -130,7 +130,6 @@ def create_usuario():
     try:
         data = request.get_json()
         
-        # Validar campos requeridos
         required_fields = ['email', 'password', 'name', 'role']
         for field in required_fields:
             if field not in data:
@@ -139,7 +138,6 @@ def create_usuario():
                     'message': f'El campo {field} es requerido'
                 }), 400
         
-        # Validar formato de email
         email = data['email']
         if '@' not in email or '.' not in email:
             return jsonify({
@@ -147,14 +145,12 @@ def create_usuario():
                 'message': 'Formato de email inválido'
             }), 400
         
-        # Verificar si el usuario ya existe
         if Usuario.find_by_email(email):
             return jsonify({
                 'success': False,
                 'message': 'El email ya está registrado'
             }), 409
         
-        # Validar rol
         roles_validos = ['admin', 'cliente', 'cajero']
         if data['role'] not in roles_validos:
             return jsonify({
@@ -162,14 +158,12 @@ def create_usuario():
                 'message': f'Rol inválido. Debe ser uno de: {", ".join(roles_validos)}'
             }), 400
         
-        # Validar longitud de contraseña
         if len(data['password']) < 6:
             return jsonify({
                 'success': False,
                 'message': 'La contraseña debe tener al menos 6 caracteres'
             }), 400
         
-        # Crear usuario
         nuevo_usuario = Usuario.create(
             email=data['email'],
             password=data['password'],
@@ -185,7 +179,6 @@ def create_usuario():
                 'message': 'Error al crear usuario'
             }), 500
         
-        # Eliminar contraseña de la respuesta
         nuevo_usuario.pop('password', None)
         
         return jsonify({
@@ -214,7 +207,6 @@ def update_usuario(usuario_id):
                 'message': 'No se enviaron datos para actualizar'
             }), 400
         
-        # Verificar que el usuario existe
         usuario_existente = Usuario.find_by_id(usuario_id)
         if not usuario_existente:
             return jsonify({
@@ -222,7 +214,6 @@ def update_usuario(usuario_id):
                 'message': 'Usuario no encontrado'
             }), 404
         
-        # Si se cambia el email, verificar que no esté en uso
         if 'email' in data and data['email'] != usuario_existente['email']:
             if Usuario.find_by_email(data['email']):
                 return jsonify({
@@ -230,7 +221,6 @@ def update_usuario(usuario_id):
                     'message': 'El email ya está en uso por otro usuario'
                 }), 409
         
-        # Validar rol si se está actualizando
         if 'role' in data:
             roles_validos = ['admin', 'cliente', 'cajero']
             if data['role'] not in roles_validos:
@@ -239,14 +229,12 @@ def update_usuario(usuario_id):
                     'message': f'Rol inválido. Debe ser uno de: {", ".join(roles_validos)}'
                 }), 400
         
-        # Validar contraseña si se está actualizando
         if 'password' in data and len(data['password']) < 6:
             return jsonify({
                 'success': False,
                 'message': 'La contraseña debe tener al menos 6 caracteres'
             }), 400
         
-        # Actualizar usuario
         usuario_actualizado = Usuario.update(usuario_id, data)
         
         if not usuario_actualizado:
@@ -255,7 +243,6 @@ def update_usuario(usuario_id):
                 'message': 'Error al actualizar usuario'
             }), 500
         
-        # Eliminar contraseña
         usuario_actualizado.pop('password', None)
         
         return jsonify({
@@ -276,14 +263,12 @@ def update_usuario(usuario_id):
 def delete_usuario(usuario_id):
     """Eliminar un usuario"""
     try:
-        # No permitir eliminar al usuario actual
         if request.current_user['user_id'] == usuario_id:
             return jsonify({
                 'success': False,
                 'message': 'No puedes eliminar tu propia cuenta'
             }), 400
         
-        # Verificar que el usuario existe
         usuario = Usuario.find_by_id(usuario_id)
         if not usuario:
             return jsonify({
@@ -291,7 +276,6 @@ def delete_usuario(usuario_id):
                 'message': 'Usuario no encontrado'
             }), 404
         
-        # Eliminar usuario
         success = Usuario.delete(usuario_id)
         
         if not success:

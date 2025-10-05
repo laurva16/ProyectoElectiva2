@@ -17,7 +17,15 @@ class Usuario:
     @staticmethod
     def find_by_id(user_id: int):
         """Buscar usuario por ID"""
-        return usuarios_collection.find_one({"id": user_id})
+        try:
+            usuario = usuarios_collection.find_one({"id": user_id})
+            if usuario:
+                # Convertir ObjectId a string
+                usuario['_id'] = str(usuario['_id'])
+            return usuario
+        except Exception as e:
+            print(f"Error buscando usuario {user_id}: {str(e)}")
+            return None
     
     @staticmethod
     def create(email: str, password: str, name: str, role: str = "cliente", telefono: str = "", direccion: str = ""):
