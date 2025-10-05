@@ -1,1 +1,184 @@
-<p>crear-usuarios works!</p>
+<div class="crear-usuario-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volver()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Crear Nuevo Usuario</h1>
+      <p>Registra un nuevo usuario en el sistema</p>
+    </div>
+  </header>
+
+  <!-- Alert Messages -->
+  <div *ngIf="errorMessage" class="alert alert-error">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    {{ successMessage }}
+  </div>
+
+  <!-- Formulario -->
+  <form [formGroup]="usuarioForm" (ngSubmit)="onSubmit()" class="usuario-form">
+    
+    <!-- Información Personal -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-user"></i>
+        Información Personal
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label for="name">Nombre Completo <span class="required">*</span></label>
+          <input 
+            type="text" 
+            id="name" 
+            formControlName="name"
+            placeholder="Ej: Juan Pérez García"
+            [class.invalid]="isFieldInvalid('name')"
+          >
+          <span *ngIf="isFieldInvalid('name')" class="error-message">
+            {{ getFieldError('name') }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="email">Correo Electrónico <span class="required">*</span></label>
+          <input 
+            type="email" 
+            id="email" 
+            formControlName="email"
+            placeholder="ejemplo@correo.com"
+            [class.invalid]="isFieldInvalid('email')"
+          >
+          <span *ngIf="isFieldInvalid('email')" class="error-message">
+            {{ getFieldError('email') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="telefono">Teléfono</label>
+          <input 
+            type="text" 
+            id="telefono" 
+            formControlName="telefono"
+            placeholder="+573001234567"
+            [class.invalid]="isFieldInvalid('telefono')"
+          >
+          <span *ngIf="isFieldInvalid('telefono')" class="error-message">
+            {{ getFieldError('telefono') }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label for="direccion">Dirección</label>
+          <input 
+            type="text" 
+            id="direccion" 
+            formControlName="direccion"
+            placeholder="Calle 123 #45-67"
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Credenciales de Acceso -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-lock"></i>
+        Credenciales de Acceso
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="password">Contraseña <span class="required">*</span></label>
+          <input 
+            type="password" 
+            id="password" 
+            formControlName="password"
+            placeholder="Mínimo 6 caracteres"
+            [class.invalid]="isFieldInvalid('password')"
+          >
+          <span *ngIf="isFieldInvalid('password')" class="error-message">
+            {{ getFieldError('password') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirmar Contraseña <span class="required">*</span></label>
+          <input 
+            type="password" 
+            id="confirmPassword" 
+            formControlName="confirmPassword"
+            placeholder="Repite la contraseña"
+            [class.invalid]="isFieldInvalid('confirmPassword')"
+          >
+          <span *ngIf="isFieldInvalid('confirmPassword')" class="error-message">
+            {{ getFieldError('confirmPassword') }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rol y Permisos -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-user-tag"></i>
+        Rol y Permisos
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="role">Rol del Usuario <span class="required">*</span></label>
+          <select 
+            id="role" 
+            formControlName="role"
+            [class.invalid]="isFieldInvalid('role')"
+          >
+            <option *ngFor="let rol of roles" [value]="rol.value">
+              {{ rol.label }}
+            </option>
+          </select>
+          <span *ngIf="isFieldInvalid('role')" class="error-message">
+            {{ getFieldError('role') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <div>
+              <strong>Roles disponibles:</strong>
+              <ul>
+                <li><strong>Cliente:</strong> Puede comprar tickets</li>
+                <li><strong>Cajero:</strong> Puede vender tickets</li>
+                <li><strong>Admin:</strong> Acceso completo</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="volver()" [disabled]="loading">
+        <i class="fas fa-times"></i>
+        Cancelar
+      </button>
+      
+      <button type="submit" class="btn-primary" [disabled]="loading || usuarioForm.invalid">
+        <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-save]="!loading"></i>
+        {{ loading ? 'Guardando...' : 'Crear Usuario' }}
+      </button>
+    </div>
+  </form>
+</div>

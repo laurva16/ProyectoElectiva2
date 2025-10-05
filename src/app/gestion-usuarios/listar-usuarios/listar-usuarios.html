@@ -1,1 +1,222 @@
-<p>listar-usuarios works!</p>
+<div class="usuarios-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volverDashboard()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Gestión de Usuarios</h1>
+      <p>Administra los usuarios del sistema</p>
+    </div>
+    <button class="btn-primary" (click)="crearNuevoUsuario()">
+      <i class="fas fa-plus"></i>
+      Nuevo Usuario
+    </button>
+  </header>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        placeholder="Buscar usuarios por nombre o email..."
+        (input)="buscar($event)"
+      >
+    </div>
+
+    <div class="filter-role">
+      <select (change)="filtrarPorRol($event)">
+        <option value="">Todos los roles</option>
+        <option *ngFor="let rol of roles" [value]="rol">
+          {{ getRolLabel(rol) }}
+        </option>
+      </select>
+    </div>
+
+    <div class="results-count">
+      <span>{{ usuariosFiltrados.length }}</span> usuarios encontrados
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando usuarios...</p>
+  </div>
+
+  <!-- Users Grid -->
+  <div *ngIf="!loading" class="users-grid">
+    <div *ngFor="let usuario of usuariosFiltrados" class="user-card" (click)="verDetalle(usuario, $event)">
+      <div class="user-avatar">
+        <img 
+          [src]="'https://ui-avatars.com/api/?name=' + usuario.name + '&background=random&color=fff&size=120'" 
+          [alt]="usuario.name"
+        >
+        <div class="role-badge" [ngClass]="getRolBadgeClass(usuario.role)">
+          <i [class]="getRolIcon(usuario.role)"></i>
+        </div>
+      </div>
+
+      <div class="user-info">
+        <h3 class="user-name">{{ usuario.name }}</h3>
+        <p class="user-email">
+          <i class="fas fa-envelope"></i>
+          {{ usuario.email }}
+        </p>
+        <p class="user-phone" *ngIf="usuario.telefono">
+          <i class="fas fa-phone"></i>
+          {{ usuario.telefono }}
+        </p>
+      </div>
+
+      <div class="user-role">
+        <span class="role-tag" [ngClass]="getRolBadgeClass(usuario.role)">
+          {{ getRolLabel(usuario.role) }}
+        </span>
+      </div>
+
+      <div class="user-actions">
+        <button 
+          class="action-btn btn-view" 
+          (click)="verDetalle(usuario, $event)"
+          title="Ver detalles"
+        >
+          <i class="fas fa-eye"></i>
+        </button>
+        
+        <button 
+          class="action-btn btn-edit" 
+          (click)="editarUsuario(usuario.id!, $event)"
+          title="Editar usuario"
+        >
+          <i class="fas fa-edit"></i>
+        </button>
+        
+        <button 
+          class="action-btn btn-delete" 
+          (click)="eliminarUsuario(usuario.id!, $event)"
+          title="Eliminar usuario"
+        >
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && usuariosFiltrados.length === 0" class="empty-state">
+    <i class="fas fa-users"></i>
+    <h3>No se encontraron usuarios</h3>
+    <p>Intenta con otros términos de búsqueda o agrega un nuevo usuario</p>
+    <button class="btn-primary" (click)="crearNuevoUsuario()">
+      <i class="fas fa-plus"></i>
+      Agregar Primer Usuario
+    </button>
+  </div>
+
+  <!-- MODAL DE DETALLES -->
+  <div *ngIf="usuarioSeleccionado" class="modal-overlay" (click)="cerrarDetalle()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <!-- Botón cerrar -->
+      <button class="modal-close" (click)="cerrarDetalle()">
+        <i class="fas fa-times"></i>
+      </button>
+
+      <!-- Header del modal -->
+      <div class="modal-header">
+        <div class="modal-avatar">
+          <img 
+            [src]="'https://ui-avatars.com/api/?name=' + usuarioSeleccionado.name + '&background=random&color=fff&size=200'" 
+            [alt]="usuarioSeleccionado.name"
+          >
+          <div class="role-badge-large" [ngClass]="getRolBadgeClass(usuarioSeleccionado.role)">
+            <i [class]="getRolIcon(usuarioSeleccionado.role)"></i>
+            {{ getRolLabel(usuarioSeleccionado.role) }}
+          </div>
+        </div>
+        
+        <div class="modal-header-info">
+          <h2 class="modal-title">{{ usuarioSeleccionado.name }}</h2>
+          <p class="modal-email">
+            <i class="fas fa-envelope"></i>
+            {{ usuarioSeleccionado.email }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Cuerpo del modal -->
+      <div class="modal-body">
+        <!-- Acciones principales -->
+        <div class="modal-actions">
+          <button 
+            class="btn-action btn-edit" 
+            (click)="editarUsuario(usuarioSeleccionado.id!)"
+          >
+            <i class="fas fa-edit"></i>
+            Editar Usuario
+          </button>
+
+          <button 
+            class="btn-action btn-delete" 
+            (click)="eliminarUsuario(usuarioSeleccionado.id!)"
+          >
+            <i class="fas fa-trash"></i>
+            Eliminar Usuario
+          </button>
+        </div>
+
+        <!-- Información detallada -->
+        <div class="modal-info-grid">
+          <div class="info-item">
+            <span class="info-label">Nombre Completo</span>
+            <span class="info-value">
+              <i class="fas fa-user"></i>
+              {{ usuarioSeleccionado.name }}
+            </span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Correo Electrónico</span>
+            <span class="info-value">
+              <i class="fas fa-envelope"></i>
+              {{ usuarioSeleccionado.email }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="usuarioSeleccionado.telefono">
+            <span class="info-label">Teléfono</span>
+            <span class="info-value">
+              <i class="fas fa-phone"></i>
+              {{ usuarioSeleccionado.telefono }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="usuarioSeleccionado.direccion">
+            <span class="info-label">Dirección</span>
+            <span class="info-value">
+              <i class="fas fa-map-marker-alt"></i>
+              {{ usuarioSeleccionado.direccion }}
+            </span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Rol</span>
+            <span class="info-value">
+              <i [class]="getRolIcon(usuarioSeleccionado.role)"></i>
+              {{ getRolLabel(usuarioSeleccionado.role) }}
+            </span>
+          </div>
+
+          <div class="info-item" *ngIf="usuarioSeleccionado.created_at">
+            <span class="info-label">Fecha de Registro</span>
+            <span class="info-value">
+              <i class="fas fa-calendar"></i>
+              {{ formatearFecha(usuarioSeleccionado.created_at) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

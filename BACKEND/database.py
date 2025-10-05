@@ -72,17 +72,31 @@ class MongoDB:
                     "id": 1,
                     "email": "admin@cinemax.com",
                     "password": "admin123",
-                    "name": "Administrador",
+                    "name": "Administrador Principal",
                     "role": "admin",
+                    "telefono": "+57 300 1234567",
+                    "direccion": "Calle Principal 123",
                     "permissions": ["all"]
                 },
                 {
                     "id": 2,
-                    "email": "empleado@cinemax.com",
-                    "password": "emp123",
-                    "name": "Empleado",
-                    "role": "employee",
-                    "permissions": ["read"]
+                    "email": "cliente@cinemax.com",
+                    "password": "cliente123",
+                    "name": "Juan Pérez",
+                    "role": "cliente",
+                    "telefono": "+57 310 9876543",
+                    "direccion": "Carrera 45 #12-34",
+                    "permissions": ["read", "buy_tickets"]
+                },
+                {
+                    "id": 3,
+                    "email": "cajero@cinemax.com",
+                    "password": "cajero123",
+                    "name": "María García",
+                    "role": "cajero",
+                    "telefono": "+57 320 5551234",
+                    "direccion": "Avenida 68 #23-45",
+                    "permissions": ["read", "create_tickets"]
                 }
             ]
             self.db.usuarios.insert_many(usuarios_iniciales)

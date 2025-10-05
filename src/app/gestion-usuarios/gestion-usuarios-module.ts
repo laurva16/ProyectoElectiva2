@@ -1,12 +1,29 @@
+// src/app/gestion-usuarios/gestion-usuarios-module.ts
 import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { RouterModule, Routes } from '@angular/router';
 
-
+const routes: Routes = [
+  {
+    path: 'crear',
+    loadComponent: () => import('./crear-usuarios/crear-usuarios').then(m => m.CrearUsuarios)
+  },
+  {
+    path: 'listar',
+    loadComponent: () => import('./listar-usuarios/listar-usuarios').then(m => m.ListarUsuarios)
+  },
+  {
+    path: 'editar/:id',
+    loadComponent: () => import('./crear-usuarios/crear-usuarios').then(m => m.CrearUsuarios)
+  },
+  {
+    path: '',
+    redirectTo: 'listar',
+    pathMatch: 'full'
+  }
+];
 
 @NgModule({
-  declarations: [],
-  imports: [
-    CommonModule
-  ]
+  imports: [RouterModule.forChild(routes)],
+  exports: [RouterModule]
 })
 export class GestionUsuariosModule { }

@@ -20,7 +20,7 @@ class Usuario:
         return usuarios_collection.find_one({"id": user_id})
     
     @staticmethod
-    def create(email: str, password: str, name: str, role: str = "employee"):
+    def create(email: str, password: str, name: str, role: str = "cliente", telefono: str = "", direccion: str = ""):
         """Crear un nuevo usuario"""
         if Usuario.find_by_email(email):
             return None
@@ -28,19 +28,50 @@ class Usuario:
         last_user = usuarios_collection.find_one(sort=[("id", -1)])
         next_id = (last_user['id'] + 1) if last_user else 1
         
+        # Definir permisos según el rol
+        if role == "admin":
+            permissions = ["all"]
+        elif role == "cajero":
+            permissions = ["read", "create_tickets"]
+        else:  # cliente
+            permissions = ["read", "buy_tickets"]
+        
         usuario = {
             "id": next_id,
             "email": email,
             "password": password,
             "name": name,
             "role": role,
-            "permissions": ["all"] if role == "admin" else ["read"],
-            "created_at": datetime.now().isoformat()
+            "telefono": telefono,
+            "direccion": direccion,
+            "permissions": permissions,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
         }
         
         result = usuarios_collection.insert_one(usuario)
         usuario['_id'] = str(result.inserted_id)
         return usuario
+    
+    @staticmethod
+    def update(user_id: int, data: Dict):
+        """Actualizar un usuario"""
+        data['updated_at'] = datetime.now().isoformat()
+        
+        result = usuarios_collection.update_one(
+            {"id": user_id},
+            {"$set": data}
+        )
+        
+        if result.modified_count > 0:
+            return Usuario.find_by_id(user_id)
+        return None
+    
+    @staticmethod
+    def delete(user_id: int):
+        """Eliminar un usuario"""
+        result = usuarios_collection.delete_one({"id": user_id})
+        return result.deleted_count > 0
     
     @staticmethod
     def get_all():
