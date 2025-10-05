@@ -1,23 +1,16 @@
 # peliculas.py
-# Módulo de gestión de películas
+# Módulo de gestión de películas con MongoDB
 
 from flask import Blueprint, request, jsonify
 from functools import wraps
 import jwt
+from config import JWT_SECRET, JWT_ALGORITHM
+from models import Pelicula
 
-# Importar la configuración y base de datos
-from models import db
-
-# Configuración JWT (debe coincidir con server.py)
-JWT_SECRET = "tu_clave_secreta_super_segura_2024"
-JWT_ALGORITHM = "HS256"
-
-# Crear Blueprint para las rutas de películas
 peliculas_bp = Blueprint('peliculas', __name__, url_prefix='/api/peliculas')
 
 
 def jwt_required(f):
-    """Decorador para rutas que requieren autenticación JWT"""
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
@@ -46,7 +39,6 @@ def jwt_required(f):
 
 
 def admin_required(f):
-    """Decorador para rutas que requieren permisos de administrador"""
     @wraps(f)
     @jwt_required
     def decorated(*args, **kwargs):
@@ -61,27 +53,16 @@ def admin_required(f):
     return decorated
 
 
-# =====================
-# RUTAS DE PELÍCULAS
-# =====================
-
 @peliculas_bp.route('', methods=['GET'])
 @jwt_required
 def get_peliculas():
-    """
-    GET /api/peliculas
-    Obtener todas las películas
-    Requiere: Autenticación
-    """
     try:
-        # Obtener parámetros de filtrado opcionales
         genero = request.args.get('genero', None)
         estado = request.args.get('estado', None)
         busqueda = request.args.get('q', None)
         
-        peliculas = db.get_all_peliculas()
+        peliculas = Pelicula.get_all()
         
-        # Aplicar filtros si existen
         if genero:
             peliculas = [p for p in peliculas if p['genero'].lower() == genero.lower()]
         
@@ -112,13 +93,8 @@ def get_peliculas():
 @peliculas_bp.route('/<int:pelicula_id>', methods=['GET'])
 @jwt_required
 def get_pelicula(pelicula_id):
-    """
-    GET /api/peliculas/{id}
-    Obtener una película por ID
-    Requiere: Autenticación
-    """
     try:
-        pelicula = db.get_pelicula_by_id(pelicula_id)
+        pelicula = Pelicula.find_by_id(pelicula_id)
         
         if not pelicula:
             return jsonify({
@@ -142,15 +118,9 @@ def get_pelicula(pelicula_id):
 @peliculas_bp.route('', methods=['POST'])
 @admin_required
 def create_pelicula():
-    """
-    POST /api/peliculas
-    Crear una nueva película
-    Requiere: Autenticación + Rol Admin
-    """
     try:
         data = request.get_json()
         
-        # Validar campos requeridos
         required_fields = ['titulo', 'descripcion', 'duracion', 'genero', 'clasificacion']
         for field in required_fields:
             if field not in data:
@@ -159,7 +129,6 @@ def create_pelicula():
                     'message': f'El campo {field} es requerido'
                 }), 400
         
-        # Validar duracion
         try:
             duracion = int(data['duracion'])
             if duracion <= 0:
@@ -170,7 +139,6 @@ def create_pelicula():
                 'message': 'La duración debe ser un número positivo'
             }), 400
         
-        # Validar precio si viene
         if 'precio' in data:
             try:
                 precio = float(data['precio'])
@@ -182,8 +150,7 @@ def create_pelicula():
                     'message': 'El precio debe ser un número válido'
                 }), 400
         
-        # Crear película
-        nueva_pelicula = db.create_pelicula(data)
+        nueva_pelicula = Pelicula.create(data)
         
         return jsonify({
             'success': True,
@@ -201,11 +168,6 @@ def create_pelicula():
 @peliculas_bp.route('/<int:pelicula_id>', methods=['PUT', 'PATCH'])
 @admin_required
 def update_pelicula(pelicula_id):
-    """
-    PUT/PATCH /api/peliculas/{id}
-    Actualizar una película
-    Requiere: Autenticación + Rol Admin
-    """
     try:
         data = request.get_json()
         
@@ -215,7 +177,6 @@ def update_pelicula(pelicula_id):
                 'message': 'No se enviaron datos para actualizar'
             }), 400
         
-        # Validar duracion si viene
         if 'duracion' in data:
             try:
                 duracion = int(data['duracion'])
@@ -227,7 +188,6 @@ def update_pelicula(pelicula_id):
                     'message': 'La duración debe ser un número positivo'
                 }), 400
         
-        # Validar precio si viene
         if 'precio' in data:
             try:
                 precio = float(data['precio'])
@@ -239,8 +199,7 @@ def update_pelicula(pelicula_id):
                     'message': 'El precio debe ser un número válido'
                 }), 400
         
-        # Actualizar película
-        pelicula_actualizada = db.update_pelicula(pelicula_id, data)
+        pelicula_actualizada = Pelicula.update(pelicula_id, data)
         
         if not pelicula_actualizada:
             return jsonify({
@@ -264,13 +223,8 @@ def update_pelicula(pelicula_id):
 @peliculas_bp.route('/<int:pelicula_id>', methods=['DELETE'])
 @admin_required
 def delete_pelicula(pelicula_id):
-    """
-    DELETE /api/peliculas/{id}
-    Eliminar una película
-    Requiere: Autenticación + Rol Admin
-    """
     try:
-        success = db.delete_pelicula(pelicula_id)
+        success = Pelicula.delete(pelicula_id)
         
         if not success:
             return jsonify({
@@ -293,19 +247,13 @@ def delete_pelicula(pelicula_id):
 @peliculas_bp.route('/stats', methods=['GET'])
 @jwt_required
 def get_peliculas_stats():
-    """
-    GET /api/peliculas/stats
-    Obtener estadísticas de películas
-    Requiere: Autenticación
-    """
     try:
-        peliculas = db.get_all_peliculas()
+        peliculas = Pelicula.get_all()
         
         total = len(peliculas)
         en_cartelera = len([p for p in peliculas if p['estado'] == 'cartelera'])
         disponibles = len([p for p in peliculas if p['estado'] == 'disponible'])
         
-        # Contar por género
         generos = {}
         for p in peliculas:
             genero = p['genero']
