@@ -1,0 +1,222 @@
+<!-- src/app/dashboard/dashboard.component.html -->
+<div class="dashboard-container">
+  
+  <!-- ============================================ -->
+  <!-- SIDEBAR -->
+  <!-- ============================================ -->
+  <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
+    <div class="logo">
+      <i class="fas fa-film"></i>
+      <span *ngIf="!sidebarCollapsed">CineMax</span>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <a class="nav-item active">
+        <i class="fas fa-home"></i>
+        <span *ngIf="!sidebarCollapsed">Dashboard</span>
+      </a>
+      <a class="nav-item" [routerLink]="['/peliculas/listar']">
+        <i class="fas fa-film"></i>
+        <span *ngIf="!sidebarCollapsed">Películas</span>
+      </a>
+      <a class="nav-item" [routerLink]="['/salas/listar']">
+        <i class="fas fa-theater-masks"></i>
+        <span *ngIf="!sidebarCollapsed">Salas</span>
+      </a>
+      <a class="nav-item" [routerLink]="['/tickets/listar']">
+        <i class="fas fa-ticket-alt"></i>
+        <span *ngIf="!sidebarCollapsed">Tickets</span>
+      </a>
+      <a *ngIf="isAdmin" class="nav-item" [routerLink]="['/usuarios/listar']">
+        <i class="fas fa-users"></i>
+        <span *ngIf="!sidebarCollapsed">Usuarios</span>
+      </a>
+      <a *ngIf="isAdmin" class="nav-item" [routerLink]="['/reportes/listar']">
+        <i class="fas fa-chart-bar"></i>
+        <span *ngIf="!sidebarCollapsed">Reportes</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-settings">
+        <i class="fas fa-cog"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============================================ -->
+  <!-- MAIN CONTENT -->
+  <!-- ============================================ -->
+  <main class="main-content" [class.expanded]="sidebarCollapsed">
+    
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-left">
+        <button class="toggle-sidebar-btn" (click)="toggleSidebar()">
+          <i class="fas" [class.fa-bars]="sidebarCollapsed" [class.fa-times]="!sidebarCollapsed"></i>
+        </button>
+        <div class="search-bar">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Buscar películas, salas, tickets...">
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <button class="notification-btn">
+          <i class="fas fa-bell"></i>
+          <span class="badge">3</span>
+        </button>
+        
+        <div class="user-menu">
+          <div class="user-info">
+            <span class="user-name">{{ currentUser?.name }}</span>
+            <span class="user-role">{{ currentUser?.role === 'admin' ? 'Administrador' : 'Empleado' }}</span>
+          </div>
+          <img [src]="'https://ui-avatars.com/api/?name=' + currentUser?.name + '&background=e50914&color=fff'" 
+               alt="Avatar">
+          <button (click)="logout()" class="btn-logout" title="Cerrar sesión">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <span class="hero-badge">
+          <i class="fas fa-fire"></i> Bienvenido
+        </span>
+        <h1 class="hero-title">Panel de Control</h1>
+        <p class="hero-description">
+          Gestiona todas las operaciones del cine desde un solo lugar
+        </p>
+        <button class="btn-refresh" 
+                (click)="cargarEstadisticas()" 
+                [disabled]="cargandoEstadisticas">
+          <i class="fas fa-sync-alt" [class.spinning]="cargandoEstadisticas"></i>
+          {{ cargandoEstadisticas ? 'Actualizando...' : 'Actualizar Datos' }}
+        </button>
+      </div>
+      <div class="hero-image">
+        <i class="fas fa-film"></i>
+      </div>
+    </section>
+
+    <!-- ESTADÍSTICAS RÁPIDAS -->
+    <section class="stats-section">
+      <div class="section-header">
+        <h2>Estadísticas Rápidas</h2>
+        <p *ngIf="estadisticas">Última actualización: {{ obtenerHoraActual() }}</p>
+      </div>
+      
+      <!-- Loading State -->
+      <div *ngIf="cargandoEstadisticas && !estadisticas" class="loading-stats">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Cargando estadísticas...</p>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="errorEstadisticas" class="error-stats">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>{{ errorEstadisticas }}</p>
+        <button (click)="cargarEstadisticas()" class="btn-retry">Reintentar</button>
+      </div>
+      
+      <!-- Stats Grid -->
+      <div *ngIf="estadisticas && !cargandoEstadisticas" class="stats-grid">
+        
+        <!-- Películas -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(229, 9, 20, 0.1);">
+            <i class="fas fa-film" style="color: #e50914;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ estadisticas.total_peliculas }}</span>
+            <span class="stat-label">Películas en Cartelera</span>
+          </div>
+        </div>
+
+        <!-- Tickets -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(70, 211, 105, 0.1);">
+            <i class="fas fa-ticket-alt" style="color: #46d369;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ estadisticas.tickets_vendidos_hoy }}</span>
+            <span class="stat-label">Tickets Vendidos Hoy</span>
+            <span *ngIf="estadisticas.cambio_tickets !== undefined" 
+                  class="stat-change"
+                  [class.positive]="estadisticas.cambio_tickets >= 0"
+                  [class.negative]="estadisticas.cambio_tickets < 0">
+              <i class="fas" 
+                 [class.fa-arrow-up]="estadisticas.cambio_tickets >= 0" 
+                 [class.fa-arrow-down]="estadisticas.cambio_tickets < 0"></i>
+              {{ Math.abs(estadisticas.cambio_tickets).toFixed(1) }}%
+            </span>
+          </div>
+        </div>
+
+        <!-- Salas -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(255, 165, 0, 0.1);">
+            <i class="fas fa-theater-masks" style="color: #ffa500;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ estadisticas.total_salas }}</span>
+            <span class="stat-label">Salas Activas</span>
+          </div>
+        </div>
+
+        <!-- Ingresos -->
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1);">
+            <i class="fas fa-dollar-sign" style="color: #3b82f6;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">${{ formatearPrecio(estadisticas.ingresos_hoy) }}</span>
+            <span class="stat-label">Ingresos de Hoy</span>
+          </div>
+        </div>
+
+        <!-- Usuarios (solo admin) -->
+        <div *ngIf="isAdmin" class="stat-card">
+          <div class="stat-icon" style="background: rgba(147, 51, 234, 0.1);">
+            <i class="fas fa-users" style="color: #9333ea;"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ estadisticas.total_usuarios }}</span>
+            <span class="stat-label">Usuarios Registrados</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MÓDULOS DEL SISTEMA -->
+    <section class="modules-section">
+      <div class="section-header">
+        <h2>Módulos del Sistema</h2>
+        <p>Accede rápidamente a las funcionalidades principales</p>
+      </div>
+
+      <div class="modules-grid">
+        <div *ngFor="let module of visibleModules" 
+             class="module-card"
+             [style.--module-color]="module.color"
+             (click)="navigateTo(module.route)">
+          <div class="module-icon">
+            <i [class]="module.icon"></i>
+          </div>
+          <div class="module-info">
+            <h3>{{ module.title }}</h3>
+            <p>{{ module.description }}</p>
+          </div>
+          <button class="module-action">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>

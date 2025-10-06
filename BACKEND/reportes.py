@@ -73,6 +73,79 @@ def convertir_precio(precio):
         return 0.0
 
 
+# Agregar este endpoint al archivo reportes.py después de los imports y antes de los otros endpoints
+
+@reportes_bp.route('/estadisticas-rapidas', methods=['GET'])
+@jwt_required
+def obtener_estadisticas_rapidas():
+    """Obtener estadísticas rápidas para el dashboard"""
+    try:
+        from datetime import datetime, timedelta
+        
+        # Fecha de hoy
+        hoy = datetime.now().strftime('%Y-%m-%d')
+        
+        # 1. Total de películas activas
+        total_peliculas = peliculas_collection.count_documents({"estado": "activo"})
+        
+        # 2. Tickets vendidos hoy
+        tickets_hoy = tickets_collection.count_documents({
+            "fecha_funcion": hoy,
+            "estado": {"$in": ["pagado", "reservado"]}
+        })
+        
+        # 3. Ingresos de hoy
+        tickets_hoy_data = list(tickets_collection.find({
+            "fecha_funcion": hoy,
+            "estado": {"$in": ["pagado", "reservado"]}
+        }))
+        ingresos_hoy = sum(convertir_precio(t.get('precio', 0)) for t in tickets_hoy_data)
+        
+        # 4. Total de salas
+        total_salas = salas_collection.count_documents({})
+        
+        # 5. Total de usuarios (si tienes acceso a la colección)
+        try:
+            from database import usuarios_collection
+            total_usuarios = usuarios_collection.count_documents({})
+        except:
+            total_usuarios = 0
+        
+        # 6. Tickets de la semana pasada para comparación
+        hace_7_dias = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        tickets_semana_pasada = tickets_collection.count_documents({
+            "fecha_funcion": {"$gte": hace_7_dias, "$lt": hoy},
+            "estado": {"$in": ["pagado", "reservado"]}
+        })
+        
+        # Calcular porcentaje de cambio
+        if tickets_semana_pasada > 0:
+            cambio_tickets = ((tickets_hoy - (tickets_semana_pasada / 7)) / (tickets_semana_pasada / 7)) * 100
+        else:
+            cambio_tickets = 100 if tickets_hoy > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_peliculas': total_peliculas,
+                'tickets_vendidos_hoy': tickets_hoy,
+                'ingresos_hoy': round(ingresos_hoy, 2),
+                'total_salas': total_salas,
+                'total_usuarios': total_usuarios,
+                'cambio_tickets': round(cambio_tickets, 2),
+                'fecha_actualizacion': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Error en estadisticas_rapidas: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener estadísticas: {str(e)}'
+        }), 500
+
 @reportes_bp.route('/ventas', methods=['GET'])
 @admin_required
 def generar_reporte_ventas():
