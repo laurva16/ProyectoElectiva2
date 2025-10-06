@@ -1,10 +1,11 @@
 # database.py
-# Gestión de la conexión a MongoDB Atlas
+# Gestión de la conexión a MongoDB Atlas con DNS forzado
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from config import MONGODB_URI, DATABASE_NAME
 import sys
+import dns.resolver
 
 class MongoDB:
     """Clase para gestionar la conexión a MongoDB Atlas"""
@@ -19,11 +20,20 @@ class MongoDB:
         try:
             print("🔄 Conectando a MongoDB Atlas...")
             
-            # Crear cliente de MongoDB
+            # FORZAR uso de Google DNS
+            print("🔧 Configurando Google DNS (8.8.8.8)...")
+            dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+            dns.resolver.default_resolver.nameservers = ['8.8.8.8', '8.8.4.4', '1.1.1.1']
+            print("✅ DNS configurado correctamente")
+            
+            # Crear cliente de MongoDB con configuraciones mejoradas
             self.client = MongoClient(
                 MONGODB_URI,
-                serverSelectionTimeoutMS=5000,  # Timeout de 5 segundos
-                connectTimeoutMS=10000
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
+                retryWrites=True,
+                maxPoolSize=10
             )
             
             # Verificar conexión
@@ -40,17 +50,29 @@ class MongoDB:
             
         except ConnectionFailure as e:
             print(f"❌ Error de conexión a MongoDB: {e}")
+            self._print_troubleshooting()
             sys.exit(1)
         except ServerSelectionTimeoutError as e:
             print(f"❌ No se pudo conectar al servidor MongoDB: {e}")
-            print("⚠️  Verifica:")
-            print("   - Tu conexión a internet")
-            print("   - Que tu IP esté en la lista blanca de MongoDB Atlas")
-            print("   - Que el connection string sea correcto")
+            self._print_troubleshooting()
             sys.exit(1)
         except Exception as e:
             print(f"❌ Error inesperado: {e}")
+            print(f"   Tipo: {type(e).__name__}")
+            self._print_troubleshooting()
             sys.exit(1)
+    
+    def _print_troubleshooting(self):
+        """Imprimir guía general de solución de problemas"""
+        print("\n" + "="*60)
+        print("🔧 POSIBLES SOLUCIONES:")
+        print("="*60)
+        print("\n1. Desactiva temporalmente firewall/antivirus")
+        print("2. Verifica que MongoDB Atlas tenga 0.0.0.0/0 configurado")
+        print("3. Prueba con VPN (ej: ProtonVPN, Windscribe gratis)")
+        print("4. Tu ISP puede estar bloqueando MongoDB")
+        print("5. Prueba desde otra red (hotspot móvil)")
+        print("="*60 + "\n")
     
     def _initialize_collections(self):
         """Crear colecciones y datos iniciales si no existen"""
@@ -63,7 +85,7 @@ class MongoDB:
         for collection in collections:
             if collection not in existing_collections:
                 self.db.create_collection(collection)
-                print(f"📝 Colección '{collection}' creada")
+                print(f"📁 Colección '{collection}' creada")
         
         # Insertar usuarios iniciales si no existen
         if self.db.usuarios.count_documents({}) == 0:

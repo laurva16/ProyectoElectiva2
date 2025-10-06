@@ -89,10 +89,29 @@ export class CrearTickets implements OnInit {
     this.http.get<any>(this.peliculasUrl, { headers }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.peliculas = response.data.filter((p: any) => p.estado === 'cartelera');
+          // Debug: Ver todas las películas y sus estados
+          console.log('📽️ Total de películas recibidas:', response.data.length);
+          console.log('Estados encontrados:', response.data.map((p: any) => `${p.titulo}: ${p.estado}`));
+          
+          // Filtrar películas disponibles para venta (cartelera y disponible)
+          this.peliculas = response.data.filter((p: any) => {
+            const estado = p.estado?.toLowerCase().trim();
+            return estado === 'cartelera' || estado === 'disponible';
+          });
+          
+          console.log('✅ Películas disponibles para tickets:', this.peliculas.length);
+          
+          // Advertencia si no hay películas disponibles
+          if (this.peliculas.length === 0) {
+            console.warn('⚠️ No hay películas disponibles. Verifica los estados en la BD.');
+            this.errorMessage = 'No hay películas disponibles para crear tickets';
+          }
         }
       },
-      error: (error) => console.error('Error al cargar películas:', error)
+      error: (error) => {
+        console.error('Error al cargar películas:', error);
+        this.errorMessage = 'Error al cargar las películas';
+      }
     });
   }
 

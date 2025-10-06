@@ -83,8 +83,8 @@ interface RegisterResponse {
                 class="form-control"
                 required
               >
-                <option value="employee">Empleado</option>
-                <option value="admin">Administrador</option>
+                <option value="employee">cliente</option>
+                <option value="admin"></option>
               </select>
             </div>
             
