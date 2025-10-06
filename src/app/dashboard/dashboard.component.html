@@ -1,4 +1,4 @@
-<!-- src/app/dashboard/dashboard.component.html -->
+<!-- src/app/dashboard/dashboard.component.html - CORREGIDO -->
 <div class="dashboard-container">
   
   <!-- ============================================ -->
@@ -91,23 +91,49 @@
         <p class="hero-description">
           Gestiona todas las operaciones del cine desde un solo lugar
         </p>
-        <button class="btn-refresh" 
-                (click)="cargarEstadisticas()" 
-                [disabled]="cargandoEstadisticas">
-          <i class="fas fa-sync-alt" [class.spinning]="cargandoEstadisticas"></i>
-          {{ cargandoEstadisticas ? 'Actualizando...' : 'Actualizar Datos' }}
-        </button>
       </div>
       <div class="hero-image">
         <i class="fas fa-film"></i>
       </div>
     </section>
 
-    <!-- ESTADÍSTICAS RÁPIDAS -->
-    <section class="stats-section">
+    <!-- ✅ MÓDULOS DEL SISTEMA - AHORA PRIMERO -->
+    <section class="modules-section">
+      <div class="section-header">
+        <h2>Módulos del Sistema</h2>
+        <p>Accede rápidamente a las funcionalidades principales</p>
+      </div>
+
+      <div class="modules-grid">
+        <div *ngFor="let module of visibleModules" 
+             class="module-card"
+             [style.--module-color]="module.color"
+             (click)="navigateTo(module.route)">
+          <div class="module-icon">
+            <i [class]="module.icon"></i>
+          </div>
+          <div class="module-info">
+            <h3>{{ module.title }}</h3>
+            <p>{{ module.description }}</p>
+          </div>
+          <button class="module-action">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ✅ ESTADÍSTICAS RÁPIDAS - AHORA DESPUÉS Y SOLO ADMIN -->
+    <section *ngIf="isAdmin" class="stats-section">
       <div class="section-header">
         <h2>Estadísticas Rápidas</h2>
         <p *ngIf="estadisticas">Última actualización: {{ obtenerHoraActual() }}</p>
+        <button class="btn-refresh" 
+                (click)="cargarEstadisticas()" 
+                [disabled]="cargandoEstadisticas">
+          <i class="fas fa-sync-alt" [class.spinning]="cargandoEstadisticas"></i>
+          {{ cargandoEstadisticas ? 'Actualizando...' : 'Actualizar Datos' }}
+        </button>
       </div>
       
       <!-- Loading State -->
@@ -179,8 +205,8 @@
           </div>
         </div>
 
-        <!-- Usuarios (solo admin) -->
-        <div *ngIf="isAdmin" class="stat-card">
+        <!-- Usuarios -->
+        <div class="stat-card">
           <div class="stat-icon" style="background: rgba(147, 51, 234, 0.1);">
             <i class="fas fa-users" style="color: #9333ea;"></i>
           </div>
@@ -188,32 +214,6 @@
             <span class="stat-value">{{ estadisticas.total_usuarios }}</span>
             <span class="stat-label">Usuarios Registrados</span>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- MÓDULOS DEL SISTEMA -->
-    <section class="modules-section">
-      <div class="section-header">
-        <h2>Módulos del Sistema</h2>
-        <p>Accede rápidamente a las funcionalidades principales</p>
-      </div>
-
-      <div class="modules-grid">
-        <div *ngFor="let module of visibleModules" 
-             class="module-card"
-             [style.--module-color]="module.color"
-             (click)="navigateTo(module.route)">
-          <div class="module-icon">
-            <i [class]="module.icon"></i>
-          </div>
-          <div class="module-info">
-            <h3>{{ module.title }}</h3>
-            <p>{{ module.description }}</p>
-          </div>
-          <button class="module-action">
-            <i class="fas fa-arrow-right"></i>
-          </button>
         </div>
       </div>
     </section>

@@ -1,4 +1,4 @@
-// src/app/dashboard/dashboard.component.ts
+// src/app/dashboard/dashboard.component.ts - CORREGIDO
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
@@ -95,7 +95,10 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit() {
     this.loadCurrentUser();
-    this.cargarEstadisticas();
+    // ✅ SOLO CARGAR ESTADÍSTICAS SI ES ADMIN
+    if (this.isAdmin) {
+      this.cargarEstadisticas();
+    }
   }
 
   private loadCurrentUser() {
@@ -104,17 +107,26 @@ export class DashboardComponent implements OnInit {
     
     if (userData) {
       this.currentUser = JSON.parse(userData);
+      console.log('Usuario actual:', this.currentUser); // ✅ DEBUG
     }
   }
 
   cargarEstadisticas() {
+    // ✅ VERIFICAR NUEVAMENTE QUE SEA ADMIN
+    if (!this.isAdmin) {
+      console.log('No es admin, no se cargan estadísticas');
+      return;
+    }
+
     this.cargandoEstadisticas = true;
     this.errorEstadisticas = '';
 
     this.estadisticasService.obtenerEstadisticasRapidas().subscribe({
       next: (response) => {
+        console.log('Respuesta estadísticas:', response); // ✅ DEBUG
         if (response.success) {
           this.estadisticas = response.data;
+          console.log('Estadísticas cargadas:', this.estadisticas); // ✅ DEBUG
         } else {
           this.errorEstadisticas = response.message || 'Error al cargar estadísticas';
         }

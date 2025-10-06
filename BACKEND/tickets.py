@@ -203,10 +203,12 @@ def get_ticket(ticket_id):
         }), 500
 
 
+# tickets.py - REEMPLAZAR LA FUNCIÓN create_ticket COMPLETA
+
 @tickets_bp.route('/', methods=['POST'])
 @jwt_required
 def create_ticket():
-    """Crear un nuevo ticket"""
+    """Crear un nuevo ticket - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
         
@@ -218,7 +220,7 @@ def create_ticket():
                     'message': f'El campo {field} es requerido'
                 }), 400
         
-        # ⬇️ CONVERTIR A INT AQUÍ
+        # ✅ CONVERTIR A INT
         try:
             pelicula_id = int(data['pelicula_id'])
             sala_id = int(data['sala_id'])
@@ -233,7 +235,7 @@ def create_ticket():
         if not pelicula:
             return jsonify({
                 'success': False,
-                'message': 'La película no existe'
+                'message': f'La película con ID {pelicula_id} no existe'
             }), 404
         
         # Validar sala existe
@@ -241,7 +243,7 @@ def create_ticket():
         if not sala:
             return jsonify({
                 'success': False,
-                'message': 'La sala no existe'
+                'message': f'La sala con ID {sala_id} no existe'
             }), 404
         
         # Validar usuario (usar el del token si no se especifica)
@@ -265,7 +267,7 @@ def create_ticket():
         if asiento_ocupado:
             return jsonify({
                 'success': False,
-                'message': 'El asiento ya está ocupado para esta función'
+                'message': f'El asiento {data["asiento"]} ya está ocupado para esta función'
             }), 409
         
         # Validar precio
@@ -279,15 +281,33 @@ def create_ticket():
                 'message': 'El precio debe ser un número válido mayor a 0'
             }), 400
         
-        # Agregar información adicional con IDs convertidos
-        data['pelicula_id'] = pelicula_id
-        data['sala_id'] = sala_id
-        data['pelicula_nombre'] = pelicula['titulo']
-        data['sala_nombre'] = sala['nombre']
-        data['usuario_id'] = usuario_id
-        data['usuario_nombre'] = usuario['name']
+        # ✅ PREPARAR DATOS DEL TICKET CON IDS COMO INT Y PRECIO COMO FLOAT
+        ticket_data = {
+            'pelicula_id': pelicula_id,  # ✅ INT
+            'sala_id': sala_id,  # ✅ INT
+            'pelicula_nombre': pelicula['titulo'],  # ✅ STRING
+            'sala_nombre': sala['nombre'],  # ✅ STRING
+            'usuario_id': usuario_id,
+            'usuario_nombre': usuario['name'],
+            'asiento': data['asiento'],
+            'fecha_funcion': data['fecha_funcion'],
+            'hora_funcion': data['hora_funcion'],
+            'precio': precio,  # ✅ FLOAT
+            'estado': data.get('estado', 'reservado'),
+            'metodo_pago': data.get('metodo_pago', 'efectivo')
+        }
         
-        nuevo_ticket = Ticket.create(data)
+        # ✅ LOG PARA DEBUG
+        print(f"\n{'='*50}")
+        print(f"🎟️ CREANDO TICKET:")
+        print(f"   - Película: {ticket_data['pelicula_nombre']} (ID: {pelicula_id})")
+        print(f"   - Sala: {ticket_data['sala_nombre']} (ID: {sala_id})")
+        print(f"   - Precio: ${precio}")
+        print(f"   - Asiento: {ticket_data['asiento']}")
+        print(f"   - Fecha: {ticket_data['fecha_funcion']} {ticket_data['hora_funcion']}")
+        print(f"{'='*50}\n")
+        
+        nuevo_ticket = Ticket.create(ticket_data)
         
         return jsonify({
             'success': True,
@@ -296,7 +316,9 @@ def create_ticket():
         }), 201
         
     except Exception as e:
-        print(f"Error al crear ticket: {str(e)}")
+        print(f"\n❌ Error al crear ticket: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'message': f'Error al crear ticket: {str(e)}'

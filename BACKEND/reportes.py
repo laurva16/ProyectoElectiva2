@@ -78,15 +78,26 @@ def convertir_precio(precio):
 @reportes_bp.route('/estadisticas-rapidas', methods=['GET'])
 @jwt_required
 def obtener_estadisticas_rapidas():
-    """Obtener estadísticas rápidas para el dashboard"""
+    """Obtener estadísticas rápidas para el dashboard - SOLO ADMIN"""
     try:
+        # ✅ VERIFICAR QUE SEA ADMIN
+        user_data = request.current_user
+        if user_data.get('role') != 'admin':
+            return jsonify({
+                'success': False,
+                'message': 'Se requieren permisos de administrador'
+            }), 403
+        
         from datetime import datetime, timedelta
         
         # Fecha de hoy
         hoy = datetime.now().strftime('%Y-%m-%d')
         
-        # 1. Total de películas activas
-        total_peliculas = peliculas_collection.count_documents({"estado": "activo"})
+        # 1. Total de películas (SIN FILTRO DE ESTADO o con el estado correcto)
+        # ✅ CAMBIO: Contar TODAS las películas o ajustar el campo
+        total_peliculas = peliculas_collection.count_documents({})
+        # Si tus películas tienen campo 'activo' boolean: 
+        # total_peliculas = peliculas_collection.count_documents({"activo": True})
         
         # 2. Tickets vendidos hoy
         tickets_hoy = tickets_collection.count_documents({
@@ -104,25 +115,32 @@ def obtener_estadisticas_rapidas():
         # 4. Total de salas
         total_salas = salas_collection.count_documents({})
         
-        # 5. Total de usuarios (si tienes acceso a la colección)
+        # 5. Total de usuarios
         try:
             from database import usuarios_collection
             total_usuarios = usuarios_collection.count_documents({})
         except:
             total_usuarios = 0
         
-        # 6. Tickets de la semana pasada para comparación
-        hace_7_dias = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        tickets_semana_pasada = tickets_collection.count_documents({
-            "fecha_funcion": {"$gte": hace_7_dias, "$lt": hoy},
+        # 6. Tickets de ayer para comparación
+        ayer = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        tickets_ayer = tickets_collection.count_documents({
+            "fecha_funcion": ayer,
             "estado": {"$in": ["pagado", "reservado"]}
         })
         
-        # Calcular porcentaje de cambio
-        if tickets_semana_pasada > 0:
-            cambio_tickets = ((tickets_hoy - (tickets_semana_pasada / 7)) / (tickets_semana_pasada / 7)) * 100
+        # Calcular porcentaje de cambio vs ayer
+        if tickets_ayer > 0:
+            cambio_tickets = ((tickets_hoy - tickets_ayer) / tickets_ayer) * 100
         else:
             cambio_tickets = 100 if tickets_hoy > 0 else 0
+        
+        # ✅ LOG PARA DEBUG
+        print(f"DEBUG Estadísticas:")
+        print(f"- Total películas: {total_peliculas}")
+        print(f"- Tickets hoy: {tickets_hoy}")
+        print(f"- Ingresos hoy: {ingresos_hoy}")
+        print(f"- Total salas: {total_salas}")
         
         return jsonify({
             'success': True,
@@ -225,10 +243,12 @@ def generar_reporte_ventas():
         }), 500
 
 
+# reportes.py - SOLUCIÓN COMPLETA PARA PDF
+
 @reportes_bp.route('/ventas/pdf', methods=['GET'])
 @admin_required
 def generar_reporte_ventas_pdf():
-    """Generar reporte de ventas en PDF"""
+    """Generar reporte de ventas en PDF - VERSIÓN CORREGIDA"""
     try:
         fecha_inicio = request.args.get('fecha_inicio', 'Todas')
         fecha_fin = request.args.get('fecha_fin', 'Todas')
@@ -246,25 +266,92 @@ def generar_reporte_ventas_pdf():
                 filtro['fecha_funcion'] = {}
             filtro['fecha_funcion']['$lte'] = fecha_fin
         
-        # Obtener tickets
+        # ✅ Obtener tickets
         tickets = list(tickets_collection.find(filtro))
         
-        # ✅ Calcular estadísticas con conversión de tipos
-        total_tickets = len(tickets)
-        ingresos_totales = sum(convertir_precio(t.get('precio', 0)) for t in tickets)
+        print(f"\n{'='*60}")
+        print(f"📊 GENERANDO REPORTE PDF")
+        print(f"{'='*60}")
+        print(f"Período: {fecha_inicio} a {fecha_fin}")
+        print(f"Total tickets encontrados: {len(tickets)}")
         
-        # Ventas por película
+        # ✅ Enriquecer datos de tickets
+        for ticket in tickets:
+            # Asegurar que tenga pelicula_nombre
+            if not ticket.get('pelicula_nombre'):
+                if ticket.get('pelicula_id'):
+                    pelicula = peliculas_collection.find_one({'id': ticket['pelicula_id']})
+                    ticket['pelicula_nombre'] = pelicula['titulo'] if pelicula else 'Película no encontrada'
+                else:
+                    ticket['pelicula_nombre'] = 'Sin información'
+            
+            # Asegurar que tenga sala_nombre
+            if not ticket.get('sala_nombre'):
+                if ticket.get('sala_id'):
+                    sala = salas_collection.find_one({'id': ticket['sala_id']})
+                    ticket['sala_nombre'] = sala['nombre'] if sala else 'Sala no encontrada'
+                else:
+                    ticket['sala_nombre'] = 'Sin información'
+            
+            # Asegurar que el precio sea numérico
+            if 'precio' in ticket:
+                ticket['precio'] = convertir_precio(ticket['precio'])
+        
+        if tickets:
+            print(f"\n📌 Ejemplo de ticket procesado:")
+            ejemplo = tickets[0]
+            print(f"   - Película: {ejemplo.get('pelicula_nombre', 'N/A')}")
+            print(f"   - Sala: {ejemplo.get('sala_nombre', 'N/A')}")
+            print(f"   - Precio: ${ejemplo.get('precio', 0)}")
+            print(f"   - Fecha: {ejemplo.get('fecha_funcion', 'N/A')}")
+        
+        # ✅ Calcular estadísticas
+        total_tickets = len(tickets)
+        ingresos_totales = sum(t.get('precio', 0) for t in tickets)
+        
+        # ✅ Ventas por película
         ventas_pelicula = {}
         for t in tickets:
             pelicula = t.get('pelicula_nombre', 'Desconocida')
             if pelicula not in ventas_pelicula:
                 ventas_pelicula[pelicula] = {'cantidad': 0, 'ingresos': 0.0}
             ventas_pelicula[pelicula]['cantidad'] += 1
-            ventas_pelicula[pelicula]['ingresos'] += convertir_precio(t.get('precio', 0))
+            ventas_pelicula[pelicula]['ingresos'] += t.get('precio', 0)
         
-        # Crear PDF en memoria
+        # ✅ Ventas por sala
+        ventas_sala = {}
+        for t in tickets:
+            sala = t.get('sala_nombre', 'Desconocida')
+            if sala not in ventas_sala:
+                ventas_sala[sala] = {'cantidad': 0, 'ingresos': 0.0}
+            ventas_sala[sala]['cantidad'] += 1
+            ventas_sala[sala]['ingresos'] += t.get('precio', 0)
+        
+        print(f"\n💰 Resumen calculado:")
+        print(f"   - Ingresos totales: ${ingresos_totales:,.2f}")
+        print(f"   - Películas únicas: {len(ventas_pelicula)}")
+        print(f"   - Salas únicas: {len(ventas_sala)}")
+        
+        if ventas_pelicula:
+            print(f"\n🎬 Top 3 películas por ingresos:")
+            top_peliculas = sorted(ventas_pelicula.items(), key=lambda x: x[1]['ingresos'], reverse=True)[:3]
+            for i, (nombre, datos) in enumerate(top_peliculas, 1):
+                print(f"   {i}. {nombre}: ${datos['ingresos']:,.2f} ({datos['cantidad']} tickets)")
+        
+        print(f"{'='*60}\n")
+        
+        # ========================
+        # GENERAR PDF
+        # ========================
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        doc = SimpleDocTemplate(
+            buffer, 
+            pagesize=letter, 
+            topMargin=0.5*inch, 
+            bottomMargin=0.5*inch,
+            leftMargin=0.75*inch,
+            rightMargin=0.75*inch
+        )
         story = []
         styles = getSampleStyleSheet()
         
@@ -274,103 +361,191 @@ def generar_reporte_ventas_pdf():
             parent=styles['Heading1'],
             fontSize=24,
             textColor=colors.HexColor('#1a56db'),
-            spaceAfter=30,
-            alignment=TA_CENTER
+            spaceAfter=20,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
         )
         
         subtitulo_style = ParagraphStyle(
             'CustomSubtitle',
             parent=styles['Heading2'],
-            fontSize=16,
+            fontSize=14,
             textColor=colors.HexColor('#1e40af'),
-            spaceAfter=12,
-            spaceBefore=12
+            spaceAfter=10,
+            spaceBefore=15,
+            fontName='Helvetica-Bold'
         )
         
-        # Título
-        story.append(Paragraph("CineMax - Reporte de Ventas", titulo_style))
-        story.append(Spacer(1, 0.2*inch))
+        # Título principal
+        story.append(Paragraph("🎬 CineMax - Reporte de Ventas", titulo_style))
+        story.append(Spacer(1, 0.15*inch))
         
         # Información del reporte
         info_data = [
-            ['Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
-            ['Período:', f'{fecha_inicio} - {fecha_fin}'],
-            ['Usuario:', request.current_user.get('email', 'N/A')]
+            ['📅 Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
+            ['📆 Período:', f'{fecha_inicio} hasta {fecha_fin}'],
+            ['👤 Generado por:', request.current_user.get('email', 'N/A')],
+            ['📊 Total de registros:', str(total_tickets)]
         ]
         
-        info_table = Table(info_data, colWidths=[2*inch, 4*inch])
+        info_table = Table(info_data, colWidths=[2.2*inch, 4.3*inch])
         info_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e0e7ff')),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1'))
         ]))
         
         story.append(info_table)
-        story.append(Spacer(1, 0.3*inch))
+        story.append(Spacer(1, 0.25*inch))
         
-        # Resumen ejecutivo
-        story.append(Paragraph("Resumen Ejecutivo", subtitulo_style))
+        # ========================
+        # RESUMEN EJECUTIVO
+        # ========================
+        story.append(Paragraph("💼 Resumen Ejecutivo", subtitulo_style))
         
-        # ✅ Usar conversión segura para precio promedio
         precio_promedio = (ingresos_totales / total_tickets) if total_tickets > 0 else 0
         
         resumen_data = [
             ['Métrica', 'Valor'],
-            ['Total de Tickets Vendidos', str(total_tickets)],
-            ['Ingresos Totales', f'${ingresos_totales:,.2f}'],
-            ['Precio Promedio', f'${precio_promedio:,.2f}']
+            ['🎟️ Total de Tickets Vendidos', str(total_tickets)],
+            ['💵 Ingresos Totales', f'${ingresos_totales:,.2f} COP'],
+            ['📊 Precio Promedio por Ticket', f'${precio_promedio:,.2f} COP']
         ]
         
-        resumen_table = Table(resumen_data, colWidths=[3*inch, 2*inch])
+        resumen_table = Table(resumen_data, colWidths=[3.5*inch, 2.5*inch])
         resumen_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f3f4f6')])
+            ('PADDING', (0, 0), (-1, -1), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')])
         ]))
         
         story.append(resumen_table)
-        story.append(Spacer(1, 0.3*inch))
+        story.append(Spacer(1, 0.25*inch))
         
-        # Ventas por película
-        story.append(Paragraph("Ventas por Película", subtitulo_style))
+        # ========================
+        # VENTAS POR PELÍCULA
+        # ========================
+        story.append(Paragraph("🎬 Ventas por Película", subtitulo_style))
         
-        pelicula_data = [['Película', 'Tickets', 'Ingresos']]
-        for pelicula, datos in sorted(ventas_pelicula.items(), key=lambda x: x[1]['ingresos'], reverse=True):
-            pelicula_data.append([
-                pelicula,
-                str(datos['cantidad']),
-                f"${datos['ingresos']:,.2f}"
-            ])
+        if ventas_pelicula:
+            pelicula_data = [['Película', 'Tickets', 'Ingresos', '% Total']]
+            
+            for pelicula, datos in sorted(ventas_pelicula.items(), key=lambda x: x[1]['ingresos'], reverse=True):
+                porcentaje = (datos['ingresos'] / ingresos_totales * 100) if ingresos_totales > 0 else 0
+                nombre_corto = pelicula[:35] + '...' if len(pelicula) > 35 else pelicula
+                pelicula_data.append([
+                    nombre_corto,
+                    str(datos['cantidad']),
+                    f"${datos['ingresos']:,.2f}",
+                    f"{porcentaje:.1f}%"
+                ])
+        else:
+            pelicula_data = [
+                ['Película', 'Tickets', 'Ingresos', '% Total'],
+                ['Sin datos de ventas en el período', '0', '$0.00', '0%']
+            ]
         
-        # ✅ Manejar caso sin datos
-        if len(pelicula_data) == 1:
-            pelicula_data.append(['Sin datos', '0', '$0.00'])
-        
-        pelicula_table = Table(pelicula_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
+        pelicula_table = Table(pelicula_data, colWidths=[2.8*inch, 1*inch, 1.5*inch, 0.8*inch])
         pelicula_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#dc2626')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 11),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f3f4f6')])
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fef2f2')])
         ]))
         
         story.append(pelicula_table)
+        story.append(Spacer(1, 0.25*inch))
+        
+        # ========================
+        # VENTAS POR SALA
+        # ========================
+        story.append(Paragraph("🎭 Ventas por Sala", subtitulo_style))
+        
+        if ventas_sala:
+            sala_data = [['Sala', 'Tickets', 'Ingresos', '% Total']]
+            
+            for sala, datos in sorted(ventas_sala.items(), key=lambda x: x[1]['ingresos'], reverse=True):
+                porcentaje = (datos['ingresos'] / ingresos_totales * 100) if ingresos_totales > 0 else 0
+                sala_data.append([
+                    sala,
+                    str(datos['cantidad']),
+                    f"${datos['ingresos']:,.2f}",
+                    f"{porcentaje:.1f}%"
+                ])
+        else:
+            sala_data = [
+                ['Sala', 'Tickets', 'Ingresos', '% Total'],
+                ['Sin datos de ventas en el período', '0', '$0.00', '0%']
+            ]
+        
+        sala_table = Table(sala_data, colWidths=[2.5*inch, 1*inch, 1.5*inch, 0.8*inch])
+        sala_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16a34a')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0fdf4')])
+        ]))
+        
+        story.append(sala_table)
+        
+        # ========================
+        # NOTA SI NO HAY DATOS
+        # ========================
+        if not tickets:
+            story.append(Spacer(1, 0.3*inch))
+            advertencia_style = ParagraphStyle(
+                'Warning',
+                parent=styles['Normal'],
+                textColor=colors.HexColor('#dc2626'),
+                fontSize=11,
+                alignment=TA_CENTER
+            )
+            advertencia = Paragraph(
+                "⚠️ <b>Nota:</b> No se encontraron tickets vendidos en el período seleccionado.",
+                advertencia_style
+            )
+            story.append(advertencia)
+        
+        # ========================
+        # PIE DE PÁGINA
+        # ========================
+        story.append(Spacer(1, 0.4*inch))
+        pie_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.HexColor('#64748b'),
+            alignment=TA_CENTER
+        )
+        pie = Paragraph(
+            f"Reporte generado por CineMax System - {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}",
+            pie_style
+        )
+        story.append(pie)
         
         # Construir PDF
         doc.build(story)
@@ -378,6 +553,8 @@ def generar_reporte_ventas_pdf():
         # Preparar respuesta
         buffer.seek(0)
         filename = f"reporte_ventas_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        print(f"✅ PDF generado exitosamente: {filename}\n")
         
         return send_file(
             buffer,
@@ -387,14 +564,16 @@ def generar_reporte_ventas_pdf():
         )
         
     except Exception as e:
-        print(f"Error al generar PDF: {str(e)}")
+        print(f"\n❌ ERROR AL GENERAR PDF:")
+        print(f"   {str(e)}")
         import traceback
         traceback.print_exc()
+        print()
+        
         return jsonify({
             'success': False,
             'message': f'Error al generar PDF: {str(e)}'
         }), 500
-
 
 @reportes_bp.route('/ocupacion', methods=['GET'])
 @admin_required
