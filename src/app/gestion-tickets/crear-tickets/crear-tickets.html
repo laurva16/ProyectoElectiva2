@@ -1,1 +1,228 @@
-<p>crear-tickets works!</p>
+<div class="crear-ticket-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volver()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Crear Nuevo Ticket</h1>
+      <p>Reserva un asiento para una función</p>
+    </div>
+  </header>
+
+  <!-- Mensajes -->
+  <div *ngIf="errorMessage" class="alert alert-error">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    {{ successMessage }}
+  </div>
+
+  <!-- Formulario -->
+  <form [formGroup]="ticketForm" (ngSubmit)="onSubmit()" class="ticket-form">
+    
+    <!-- Selección de Película y Sala -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-film"></i>
+        Seleccionar Película y Sala
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pelicula_id">Película <span class="required">*</span></label>
+          <select 
+            id="pelicula_id" 
+            formControlName="pelicula_id"
+            [class.invalid]="isFieldInvalid('pelicula_id')"
+          >
+            <option value="">Selecciona una película</option>
+            <option *ngFor="let pelicula of peliculas" [value]="pelicula.id">
+              {{ pelicula.titulo }} - ${{ pelicula.precio }}
+            </option>
+          </select>
+          <span *ngIf="isFieldInvalid('pelicula_id')" class="error-message">
+            {{ getFieldError('pelicula_id') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="sala_id">Sala <span class="required">*</span></label>
+          <select 
+            id="sala_id" 
+            formControlName="sala_id"
+            [class.invalid]="isFieldInvalid('sala_id')"
+          >
+            <option value="">Selecciona una sala</option>
+            <option *ngFor="let sala of salas" [value]="sala.id">
+              {{ sala.nombre }} ({{ sala.capacidad }} asientos) - ${{ sala.precio_base }}
+            </option>
+          </select>
+          <span *ngIf="isFieldInvalid('sala_id')" class="error-message">
+            {{ getFieldError('sala_id') }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fecha y Hora -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-calendar"></i>
+        Fecha y Hora de la Función
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fecha_funcion">Fecha <span class="required">*</span></label>
+          <input 
+            type="date" 
+            id="fecha_funcion" 
+            formControlName="fecha_funcion"
+            [class.invalid]="isFieldInvalid('fecha_funcion')"
+          >
+          <span *ngIf="isFieldInvalid('fecha_funcion')" class="error-message">
+            {{ getFieldError('fecha_funcion') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="hora_funcion">Hora <span class="required">*</span></label>
+          <select 
+            id="hora_funcion" 
+            formControlName="hora_funcion"
+            [class.invalid]="isFieldInvalid('hora_funcion')"
+          >
+            <option value="">Selecciona una hora</option>
+            <option value="14:00">2:00 PM</option>
+            <option value="16:30">4:30 PM</option>
+            <option value="19:00">7:00 PM</option>
+            <option value="21:30">9:30 PM</option>
+          </select>
+          <span *ngIf="isFieldInvalid('hora_funcion')" class="error-message">
+            {{ getFieldError('hora_funcion') }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <button 
+          type="button" 
+          class="btn-secondary btn-full"
+          (click)="verificarDisponibilidad()"
+          [disabled]="loadingAsientos || !ticketForm.get('sala_id')?.value || !ticketForm.get('fecha_funcion')?.value || !ticketForm.get('hora_funcion')?.value"
+        >
+          <i class="fas" [class.fa-spinner]="loadingAsientos" [class.fa-spin]="loadingAsientos" [class.fa-search]="!loadingAsientos"></i>
+          {{ loadingAsientos ? 'Cargando...' : 'Ver Asientos Disponibles' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Selección de Asientos -->
+    <div class="form-section" *ngIf="mostrarAsientos">
+      <h2 class="section-title">
+        <i class="fas fa-chair"></i>
+        Seleccionar Asiento
+      </h2>
+
+      <div class="asientos-info">
+        <div class="info-badge">
+          <span class="badge-disponible"></span> Disponible
+        </div>
+        <div class="info-badge">
+          <span class="badge-ocupado"></span> Ocupado
+        </div>
+        <div class="info-badge">
+          <span class="badge-seleccionado"></span> Seleccionado
+        </div>
+      </div>
+
+      <div class="pantalla">PANTALLA</div>
+
+      <div class="asientos-grid">
+        <div 
+          *ngFor="let asiento of asientos"
+          class="asiento"
+          [class.disponible]="asiento.disponible"
+          [class.ocupado]="!asiento.disponible"
+          [class.seleccionado]="asientoSeleccionado?.nombre === asiento.nombre"
+          (click)="seleccionarAsiento(asiento)"
+          [title]="asiento.nombre"
+        >
+          {{ asiento.nombre }}
+        </div>
+      </div>
+
+      <div class="form-group" *ngIf="asientoSeleccionado">
+        <label>Asiento Seleccionado</label>
+        <input 
+          type="text" 
+          [value]="asientoSeleccionado.nombre"
+          readonly
+        >
+      </div>
+    </div>
+
+    <!-- Precio y Pago -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-dollar-sign"></i>
+        Precio y Método de Pago
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="precio">Precio Total (USD) <span class="required">*</span></label>
+          <input 
+            type="number" 
+            id="precio" 
+            formControlName="precio"
+            step="0.01"
+            readonly
+            [class.invalid]="isFieldInvalid('precio')"
+          >
+          <small class="help-text">Calculado automáticamente</small>
+        </div>
+
+        <div class="form-group">
+          <label for="metodo_pago">Método de Pago <span class="required">*</span></label>
+          <select 
+            id="metodo_pago" 
+            formControlName="metodo_pago"
+          >
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="estado">Estado <span class="required">*</span></label>
+          <select 
+            id="estado" 
+            formControlName="estado"
+          >
+            <option value="reservado">Reservado</option>
+            <option value="pagado">Pagado</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="volver()" [disabled]="loading">
+        <i class="fas fa-times"></i>
+        Cancelar
+      </button>
+      
+      <button type="submit" class="btn-primary" [disabled]="loading || ticketForm.invalid">
+        <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-ticket-alt]="!loading"></i>
+        {{ loading ? 'Creando...' : 'Crear Ticket' }}
+      </button>
+    </div>
+  </form>
+</div>

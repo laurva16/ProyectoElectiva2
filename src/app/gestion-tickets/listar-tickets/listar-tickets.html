@@ -1,0 +1,250 @@
+<div class="tickets-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volver()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Gestión de Tickets</h1>
+      <p>Administra los tickets de cine</p>
+    </div>
+    <button class="btn-primary" (click)="crearNuevoTicket()">
+      <i class="fas fa-plus"></i>
+      Nuevo Ticket
+    </button>
+  </header>
+
+  <!-- Barra de Filtros -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Buscar por película, sala, usuario..."
+      >
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="filtroEstado" (ngModelChange)="onFiltroEstadoChange()">
+        <option value="">Todos los estados</option>
+        <option value="reservado">Reservado</option>
+        <option value="pagado">Pagado</option>
+        <option value="cancelado">Cancelado</option>
+        <option value="usado">Usado</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <input 
+        type="date" 
+        [(ngModel)]="filtroFecha"
+        (ngModelChange)="onFiltroFechaChange()"
+        placeholder="Filtrar por fecha"
+      >
+    </div>
+
+    <div class="results-count">
+      <span>{{ ticketsFiltrados.length }}</span> ticket{{ ticketsFiltrados.length !== 1 ? 's' : '' }}
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando tickets...</p>
+  </div>
+
+  <!-- Tabla de Tickets -->
+  <div *ngIf="!loading && ticketsFiltrados.length > 0" class="tickets-table-container">
+    <table class="tickets-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Película</th>
+          <th>Sala</th>
+          <th>Asiento</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Usuario</th>
+          <th>Precio</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let ticket of ticketsFiltrados" class="ticket-row">
+          <td class="ticket-id">#{{ ticket.id }}</td>
+          <td class="ticket-pelicula">{{ ticket.pelicula_nombre }}</td>
+          <td>{{ ticket.sala_nombre }}</td>
+          <td class="ticket-asiento">{{ ticket.asiento }}</td>
+          <td>{{ ticket.fecha_funcion }}</td>
+          <td>{{ ticket.hora_funcion }}</td>
+          <td>{{ ticket.usuario_nombre }}</td>
+          <td class="ticket-precio">${{ ticket.precio }}</td>
+          <td>
+            <span class="badge-estado" [ngClass]="getEstadoClass(ticket.estado)">
+              <i class="fas" [ngClass]="getEstadoIcon(ticket.estado)"></i>
+              {{ ticket.estado }}
+            </span>
+          </td>
+          <td class="ticket-actions">
+            <button class="btn-icon btn-info" (click)="verDetalle(ticket)" title="Ver detalles">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button 
+              class="btn-icon btn-print" 
+              (click)="imprimirTicket(ticket)"
+              *ngIf="ticket.estado !== 'cancelado'"
+              title="Imprimir"
+            >
+              <i class="fas fa-print"></i>
+            </button>
+            <button 
+              class="btn-icon btn-delete" 
+              (click)="cancelarTicket(ticket)"
+              *ngIf="ticket.estado !== 'cancelado'"
+              title="Cancelar"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && ticketsFiltrados.length === 0" class="empty-state">
+    <i class="fas fa-ticket-alt"></i>
+    <h3>No se encontraron tickets</h3>
+    <p>Intenta ajustar los filtros o crea un nuevo ticket</p>
+    <button class="btn-primary" (click)="crearNuevoTicket()">
+      <i class="fas fa-plus"></i>
+      Crear Primer Ticket
+    </button>
+  </div>
+
+  <!-- Modal de Detalles -->
+  <div *ngIf="showModal && ticketSeleccionado" class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="cerrarModal()">
+        <i class="fas fa-times"></i>
+      </button>
+
+      <div class="modal-header">
+        <div class="modal-icon">
+          <i class="fas fa-ticket-alt"></i>
+        </div>
+        <div>
+          <h2 class="modal-title">Ticket #{{ ticketSeleccionado.id }}</h2>
+          <span class="badge-estado" [ngClass]="getEstadoClass(ticketSeleccionado.estado)">
+            <i class="fas" [ngClass]="getEstadoIcon(ticketSeleccionado.estado)"></i>
+            {{ ticketSeleccionado.estado }}
+          </span>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-section">
+          <h3 class="section-title">Información de la Función</h3>
+          <div class="modal-info-grid">
+            <div class="info-item">
+              <span class="info-label">Película</span>
+              <span class="info-value">
+                <i class="fas fa-film"></i>
+                {{ ticketSeleccionado.pelicula_nombre }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Sala</span>
+              <span class="info-value">
+                <i class="fas fa-door-open"></i>
+                {{ ticketSeleccionado.sala_nombre }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Asiento</span>
+              <span class="info-value">
+                <i class="fas fa-chair"></i>
+                {{ ticketSeleccionado.asiento }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Fecha</span>
+              <span class="info-value">
+                <i class="fas fa-calendar"></i>
+                {{ ticketSeleccionado.fecha_funcion }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Hora</span>
+              <span class="info-value">
+                <i class="fas fa-clock"></i>
+                {{ ticketSeleccionado.hora_funcion }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Precio</span>
+              <span class="info-value">
+                <i class="fas fa-dollar-sign"></i>
+                ${{ ticketSeleccionado.precio }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <h3 class="section-title">Información del Cliente</h3>
+          <div class="modal-info-grid">
+            <div class="info-item">
+              <span class="info-label">Usuario</span>
+              <span class="info-value">
+                <i class="fas fa-user"></i>
+                {{ ticketSeleccionado.usuario_nombre }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Método de Pago</span>
+              <span class="info-value">
+                <i class="fas fa-credit-card"></i>
+                {{ ticketSeleccionado.metodo_pago }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <h3 class="section-title">Código QR</h3>
+          <div class="qr-code-container">
+            <div class="qr-placeholder">
+              <i class="fas fa-qrcode"></i>
+              <p>{{ ticketSeleccionado.codigo_qr }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="imprimirTicket(ticketSeleccionado)">
+            <i class="fas fa-print"></i>
+            Imprimir
+          </button>
+          <button 
+            class="btn-primary" 
+            (click)="cerrarModal()"
+          >
+            <i class="fas fa-check"></i>
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,11 +1,228 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+interface Pelicula {
+  id: number;
+  titulo: string;
+  precio: number;
+}
+
+interface Sala {
+  id: number;
+  nombre: string;
+  precio_base: number;
+  capacidad: number;
+  filas: number;
+  asientos_por_fila: number;
+}
+
+interface Asiento {
+  nombre: string;
+  fila: number;
+  numero: number;
+  disponible: boolean;
+}
 
 @Component({
   selector: 'app-crear-tickets',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, RouterModule, ReactiveFormsModule],
   templateUrl: './crear-tickets.html',
   styleUrl: './crear-tickets.css'
 })
-export class CrearTickets {
+export class CrearTickets implements OnInit {
+  ticketForm!: FormGroup;
+  loading = false;
+  errorMessage = '';
+  successMessage = '';
+  
+  peliculas: Pelicula[] = [];
+  salas: Sala[] = [];
+  asientos: Asiento[] = [];
+  asientoSeleccionado: Asiento | null = null;
+  
+  loadingAsientos = false;
+  mostrarAsientos = false;
 
+  private apiUrl = 'http://localhost:5000/api/tickets';
+  private peliculasUrl = 'http://localhost:5000/api/peliculas';
+  private salasUrl = 'http://localhost:5000/api/salas';
+
+  constructor(
+    private fb: FormBuilder,
+    private http: HttpClient,
+    private router: Router
+  ) {}
+
+  ngOnInit() {
+    this.initForm();
+    this.cargarPeliculas();
+    this.cargarSalas();
+  }
+
+  initForm() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    this.ticketForm = this.fb.group({
+      pelicula_id: ['', Validators.required],
+      sala_id: ['', Validators.required],
+      fecha_funcion: [today, Validators.required],
+      hora_funcion: ['', Validators.required],
+      asiento: ['', Validators.required],
+      precio: ['', [Validators.required, Validators.min(0)]],
+      metodo_pago: ['efectivo', Validators.required],
+      estado: ['reservado', Validators.required]
+    });
+
+    // Auto-calcular precio cuando cambie película o sala
+    this.ticketForm.get('pelicula_id')?.valueChanges.subscribe(() => this.calcularPrecio());
+    this.ticketForm.get('sala_id')?.valueChanges.subscribe(() => this.calcularPrecio());
+  }
+
+  cargarPeliculas() {
+    const token = this.getToken();
+    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+
+    this.http.get<any>(this.peliculasUrl, { headers }).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.peliculas = response.data.filter((p: any) => p.estado === 'cartelera');
+        }
+      },
+      error: (error) => console.error('Error al cargar películas:', error)
+    });
+  }
+
+  cargarSalas() {
+    const token = this.getToken();
+    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+
+    this.http.get<any>(this.salasUrl, { headers }).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.salas = response.data.filter((s: any) => s.estado === 'activa');
+        }
+      },
+      error: (error) => console.error('Error al cargar salas:', error)
+    });
+  }
+
+  calcularPrecio() {
+    const peliculaId = this.ticketForm.get('pelicula_id')?.value;
+    const salaId = this.ticketForm.get('sala_id')?.value;
+
+    if (peliculaId && salaId) {
+      const pelicula = this.peliculas.find(p => p.id == peliculaId);
+      const sala = this.salas.find(s => s.id == salaId);
+
+      if (pelicula && sala) {
+        const precio = (pelicula.precio || 0) + (sala.precio_base || 0);
+        this.ticketForm.get('precio')?.setValue(precio.toFixed(2));
+      }
+    }
+  }
+
+  verificarDisponibilidad() {
+    const salaId = this.ticketForm.get('sala_id')?.value;
+    const fecha = this.ticketForm.get('fecha_funcion')?.value;
+    const hora = this.ticketForm.get('hora_funcion')?.value;
+
+    if (!salaId || !fecha || !hora) {
+      this.errorMessage = 'Por favor selecciona sala, fecha y hora';
+      return;
+    }
+
+    this.loadingAsientos = true;
+    this.errorMessage = '';
+
+    const token = this.getToken();
+    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+    const url = `${this.apiUrl}/disponibilidad?sala_id=${salaId}&fecha=${fecha}&hora=${hora}`;
+
+    this.http.get<any>(url, { headers }).subscribe({
+      next: (response) => {
+        this.loadingAsientos = false;
+        if (response.success) {
+          this.asientos = response.data.asientos;
+          this.mostrarAsientos = true;
+        }
+      },
+      error: (error) => {
+        this.loadingAsientos = false;
+        this.errorMessage = error.error?.message || 'Error al cargar disponibilidad';
+      }
+    });
+  }
+
+  seleccionarAsiento(asiento: Asiento) {
+    if (!asiento.disponible) return;
+
+    this.asientoSeleccionado = asiento;
+    this.ticketForm.get('asiento')?.setValue(asiento.nombre);
+  }
+
+  onSubmit() {
+    if (this.ticketForm.invalid) {
+      this.markFormGroupTouched(this.ticketForm);
+      this.errorMessage = 'Por favor completa todos los campos requeridos';
+      return;
+    }
+
+    this.loading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    const token = this.getToken();
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+
+    this.http.post(this.apiUrl, this.ticketForm.value, { headers }).subscribe({
+      next: (response: any) => {
+        this.loading = false;
+        this.successMessage = 'Ticket creado exitosamente';
+        
+        setTimeout(() => {
+          this.router.navigate(['/tickets/listar']);
+        }, 1500);
+      },
+      error: (error) => {
+        this.loading = false;
+        console.error('Error al crear ticket:', error);
+        this.errorMessage = error.error?.message || 'Error al crear el ticket';
+      }
+    });
+  }
+
+  private markFormGroupTouched(formGroup: FormGroup) {
+    Object.keys(formGroup.controls).forEach(key => {
+      formGroup.get(key)?.markAsTouched();
+    });
+  }
+
+  getFieldError(fieldName: string): string {
+    const control = this.ticketForm.get(fieldName);
+    
+    if (control?.hasError('required')) return 'Este campo es requerido';
+    if (control?.hasError('min')) return `Valor mínimo: ${control.errors?.['min'].min}`;
+    
+    return '';
+  }
+
+  isFieldInvalid(fieldName: string): boolean {
+    const control = this.ticketForm.get(fieldName);
+    return !!(control && control.invalid && (control.dirty || control.touched));
+  }
+
+  getToken(): string {
+    return localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token') || '';
+  }
+
+  volver() {
+    this.router.navigate(['/tickets/listar']);
+  }
 }

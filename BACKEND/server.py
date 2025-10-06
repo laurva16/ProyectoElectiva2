@@ -9,14 +9,17 @@ from config import JWT_SECRET, JWT_ALGORITHM, PORT, DEBUG
 from models import Usuario, Pelicula
 from peliculas import peliculas_bp
 from usuarios import usuarios_bp
-from salas import salas_bp  # ✅ AGREGAR ESTA LÍNEA
+from salas import salas_bp
+from tickets import tickets_bp  # ✅ AGREGAR TICKETS
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 CORS(app, origins=["http://localhost:4200"], supports_credentials=True)
 
 app.register_blueprint(peliculas_bp)
 app.register_blueprint(usuarios_bp)
-app.register_blueprint(salas_bp)  # ✅ REGISTRAR EL BLUEPRINT
+app.register_blueprint(salas_bp)
+app.register_blueprint(tickets_bp)  # ✅ REGISTRAR TICKETS
 
 def generate_jwt_token(user):
     payload = {
@@ -212,6 +215,7 @@ if __name__ == '__main__':
     print("Base de datos: MongoDB Atlas")
     print("Módulo de Películas cargado")
     print("Módulo de Usuarios cargado")
-    print("Módulo de Salas cargado")  # ✅ AGREGAR ESTA LÍNEA
+    print("Módulo de Salas cargado")
+    print("Módulo de Tickets cargado")  # ✅ AGREGAR ESTA LÍNEA
     print("=" * 60)
     app.run(port=PORT, debug=DEBUG)

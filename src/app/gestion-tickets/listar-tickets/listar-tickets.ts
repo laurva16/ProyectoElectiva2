@@ -1,11 +1,191 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+
+interface Ticket {
+  id: number;
+  pelicula_id: number;
+  pelicula_nombre: string;
+  sala_id: number;
+  sala_nombre: string;
+  usuario_id: number;
+  usuario_nombre: string;
+  asiento: string;
+  fecha_funcion: string;
+  hora_funcion: string;
+  precio: number;
+  estado: string;
+  metodo_pago: string;
+  codigo_qr: string;
+  created_at?: string;
+}
 
 @Component({
   selector: 'app-listar-tickets',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './listar-tickets.html',
   styleUrl: './listar-tickets.css'
 })
-export class ListarTickets {
+export class ListarTickets implements OnInit {
+  tickets: Ticket[] = [];
+  ticketsFiltrados: Ticket[] = [];
+  loading = true;
+  
+  // Filtros
+  searchTerm = '';
+  filtroEstado = '';
+  filtroFecha = '';
+  
+  // Modal
+  showModal = false;
+  ticketSeleccionado: Ticket | null = null;
 
+  private apiUrl = 'http://localhost:5000/api/tickets';
+
+  constructor(
+    private http: HttpClient,
+    private router: Router
+  ) {}
+
+  ngOnInit() {
+    this.cargarTickets();
+  }
+
+  cargarTickets() {
+    this.loading = true;
+    
+    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
+    
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    this.http.get<any>(this.apiUrl, { headers }).subscribe({
+      next: (response) => {
+        this.loading = false;
+        if (response.success) {
+          this.tickets = response.data;
+          this.aplicarFiltros();
+        }
+      },
+      error: (error) => {
+        this.loading = false;
+        console.error('Error al cargar tickets:', error);
+        
+        if (error.status === 401) {
+          this.router.navigate(['/login']);
+        }
+      }
+    });
+  }
+
+  aplicarFiltros() {
+    this.ticketsFiltrados = this.tickets.filter(ticket => {
+      const cumpleBusqueda = 
+        ticket.pelicula_nombre.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        ticket.sala_nombre.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        ticket.usuario_nombre.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        ticket.asiento.toLowerCase().includes(this.searchTerm.toLowerCase());
+      
+      const cumpleEstado = !this.filtroEstado || ticket.estado === this.filtroEstado;
+      const cumpleFecha = !this.filtroFecha || ticket.fecha_funcion === this.filtroFecha;
+      
+      return cumpleBusqueda && cumpleEstado && cumpleFecha;
+    });
+  }
+
+  onSearchChange() {
+    this.aplicarFiltros();
+  }
+
+  onFiltroEstadoChange() {
+    this.aplicarFiltros();
+  }
+
+  onFiltroFechaChange() {
+    this.aplicarFiltros();
+  }
+
+  limpiarFiltros() {
+    this.searchTerm = '';
+    this.filtroEstado = '';
+    this.filtroFecha = '';
+    this.aplicarFiltros();
+  }
+
+  verDetalle(ticket: Ticket) {
+    this.ticketSeleccionado = ticket;
+    this.showModal = true;
+  }
+
+  cerrarModal() {
+    this.showModal = false;
+    this.ticketSeleccionado = null;
+  }
+
+  cancelarTicket(ticket: Ticket) {
+    if (!confirm(`¿Estás seguro de cancelar el ticket #${ticket.id}?`)) {
+      return;
+    }
+
+    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
+    
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    this.http.delete(`${this.apiUrl}/${ticket.id}`, { headers }).subscribe({
+      next: (response: any) => {
+        if (response.success) {
+          // Actualizar estado localmente
+          const index = this.tickets.findIndex(t => t.id === ticket.id);
+          if (index !== -1) {
+            this.tickets[index].estado = 'cancelado';
+          }
+          this.aplicarFiltros();
+          alert('Ticket cancelado exitosamente');
+        }
+      },
+      error: (error) => {
+        console.error('Error al cancelar ticket:', error);
+        alert(error.error?.message || 'Error al cancelar el ticket');
+      }
+    });
+  }
+
+  imprimirTicket(ticket: Ticket) {
+    // Aquí podrías implementar la lógica de impresión
+    alert(`Imprimir ticket #${ticket.id}\nCódigo QR: ${ticket.codigo_qr}`);
+  }
+
+  crearNuevoTicket() {
+    this.router.navigate(['/tickets/crear']);
+  }
+
+  volver() {
+    this.router.navigate(['/dashboard']);
+  }
+
+  getEstadoClass(estado: string): string {
+    const clases: { [key: string]: string } = {
+      'reservado': 'estado-reservado',
+      'pagado': 'estado-pagado',
+      'cancelado': 'estado-cancelado',
+      'usado': 'estado-usado'
+    };
+    return clases[estado] || '';
+  }
+
+  getEstadoIcon(estado: string): string {
+    const iconos: { [key: string]: string } = {
+      'reservado': 'fa-clock',
+      'pagado': 'fa-check-circle',
+      'cancelado': 'fa-times-circle',
+      'usado': 'fa-check-double'
+    };
+    return iconos[estado] || 'fa-ticket-alt';
+  }
 }
