@@ -11,6 +11,7 @@ from peliculas import peliculas_bp
 from usuarios import usuarios_bp
 from salas import salas_bp
 from tickets import tickets_bp  # ✅ AGREGAR TICKETS
+from reportes import reportes_bp
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -20,6 +21,7 @@ app.register_blueprint(peliculas_bp)
 app.register_blueprint(usuarios_bp)
 app.register_blueprint(salas_bp)
 app.register_blueprint(tickets_bp)  # ✅ REGISTRAR TICKETS
+app.register_blueprint(reportes_bp)
 
 def generate_jwt_token(user):
     payload = {
@@ -217,5 +219,6 @@ if __name__ == '__main__':
     print("Módulo de Usuarios cargado")
     print("Módulo de Salas cargado")
     print("Módulo de Tickets cargado")  # ✅ AGREGAR ESTA LÍNEA
+    print("Módulo de Reportes cargado")
     print("=" * 60)
     app.run(port=PORT, debug=DEBUG)

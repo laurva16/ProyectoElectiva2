@@ -1,1 +1,164 @@
-<p>listar-reportes works!</p>
+<div class="reportes-container">
+  <!-- Header -->
+  <div class="header">
+    <button class="btn-back" (click)="volver()">
+      ← Volver al Dashboard
+    </button>
+    <h1 class="title">Reportes de Ventas</h1>
+    <p class="subtitle">Genera y descarga reportes detallados de las ventas</p>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters-card">
+    <h2 class="section-title">Filtros de Reporte</h2>
+    
+    <div class="filters-grid">
+      <div class="form-group">
+        <label for="fechaInicio">Fecha Inicio</label>
+        <input 
+          type="date" 
+          id="fechaInicio" 
+          [(ngModel)]="fechaInicio"
+          class="form-control"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="fechaFin">Fecha Fin</label>
+        <input 
+          type="date" 
+          id="fechaFin" 
+          [(ngModel)]="fechaFin"
+          class="form-control"
+        >
+      </div>
+    </div>
+
+    <div class="buttons-group">
+      <button 
+        class="btn btn-primary" 
+        (click)="generarReporte()"
+        [disabled]="loading"
+      >
+        <span *ngIf="!loading">📊 Generar Reporte</span>
+        <span *ngIf="loading">⏳ Generando...</span>
+      </button>
+
+      <button 
+        class="btn btn-success" 
+        (click)="descargarPDF()"
+        [disabled]="loading"
+      >
+        <span *ngIf="!loading">📄 Descargar PDF</span>
+        <span *ngIf="loading">⏳ Descargando...</span>
+      </button>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="alert alert-error">
+      ⚠️ {{ errorMessage }}
+    </div>
+  </div>
+
+  <!-- Resultados del Reporte -->
+  <div *ngIf="reporteData" class="results-section">
+    
+    <!-- Resumen Ejecutivo -->
+    <div class="summary-card">
+      <h2 class="section-title">Resumen Ejecutivo</h2>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🎫</div>
+          <div class="stat-content">
+            <p class="stat-label">Total Tickets</p>
+            <p class="stat-value">{{ reporteData.resumen.total_tickets }}</p>
+          </div>
+        </div>
+
+        <div class="stat-card success">
+          <div class="stat-icon">💰</div>
+          <div class="stat-content">
+            <p class="stat-label">Ingresos Totales</p>
+            <p class="stat-value">${{ reporteData.resumen.ingresos_totales.toFixed(2) }}</p>
+          </div>
+        </div>
+
+        <div class="stat-card info">
+          <div class="stat-icon">📅</div>
+          <div class="stat-content">
+            <p class="stat-label">Período</p>
+            <p class="stat-value-small">{{ reporteData.resumen.fecha_inicio }} al {{ reporteData.resumen.fecha_fin }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ventas por Película -->
+    <div class="table-card">
+      <h2 class="section-title">Ventas por Película</h2>
+      
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Película</th>
+              <th class="text-center">Tickets Vendidos</th>
+              <th class="text-right">Ingresos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pelicula of getVentasPeliculaArray()">
+              <td class="font-semibold">{{ pelicula[0] }}</td>
+              <td class="text-center">{{ pelicula[1].cantidad }}</td>
+              <td class="text-right font-semibold text-success">
+                ${{ pelicula[1].ingresos.toFixed(2) }}
+              </td>
+            </tr>
+            <tr *ngIf="getVentasPeliculaArray().length === 0">
+              <td colspan="3" class="text-center text-muted">
+                No hay datos de ventas para este período
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+<!-- Ventas por Sala -->
+<div class="table-card" *ngIf="reporteData.ventas_por_sala">
+  <h2 class="section-title">Ventas por Sala</h2>
+  
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Sala</th>
+          <th class="text-center">Tickets Vendidos</th>
+          <th class="text-right">Ingresos</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ✅ CAMBIAR ESTA LÍNEA -->
+        <tr *ngFor="let sala of getVentasSalaArray()">
+          <td class="font-semibold">{{ sala.key }}</td>
+          <td class="text-center">{{ sala.value.cantidad }}</td>
+          <td class="text-right font-semibold text-success">
+            ${{ sala.value.ingresos.toFixed(2) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+  </div>
+
+  <!-- Estado vacío -->
+  <div *ngIf="!reporteData && !loading" class="empty-state">
+    <div class="empty-icon">📊</div>
+    <h3>Selecciona un período y genera tu reporte</h3>
+    <p>Usa los filtros de arriba para generar un reporte detallado de ventas</p>
+  </div>
+
+</div>
