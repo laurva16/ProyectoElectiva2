@@ -11,12 +11,12 @@ interface Pelicula {
   genero: string;
   clasificacion: string;
   imagen_url?: string;
-  trailer_url?: string;  // Agregado
+  trailer_url?: string;
   estado: string;
-   director?: string;         // AGREGAR
-  actores?: string;          // AGREGAR
-  fecha_estreno?: string;    // AGREGAR
-  precio?: number;           // AGREGAR
+  director?: string;
+  actores?: string;
+  fecha_estreno?: string;
+  precio?: number;
 }
 
 @Component({
@@ -34,6 +34,14 @@ export class ListarPeliculas implements OnInit {
   filtroGenero = '';
   generos: string[] = [];
   peliculaSeleccionada: Pelicula | null = null;
+  
+  // Usuario actual
+  currentUser: any = null;
+
+  // Getter para verificar si es admin
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin';
+  }
 
   private apiUrl = 'http://localhost:5000/api/peliculas';
 
@@ -43,7 +51,17 @@ export class ListarPeliculas implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.loadCurrentUser();
     this.cargarPeliculas();
+  }
+
+  private loadCurrentUser() {
+    const userData = localStorage.getItem('cinemax_user') || 
+                    sessionStorage.getItem('cinemax_user');
+    
+    if (userData) {
+      this.currentUser = JSON.parse(userData);
+    }
   }
 
   cargarPeliculas() {
@@ -60,7 +78,6 @@ export class ListarPeliculas implements OnInit {
       next: (response) => {
         const peliculasBackend = response.data || [];
         
-        // Datos estáticos con URLs de trailers
         const peliculasEstaticas = [
           {
             id: 1,
@@ -121,8 +138,6 @@ export class ListarPeliculas implements OnInit {
         this.peliculasFiltradas = [...this.peliculas];
         this.extraerGeneros();
         this.loading = false;
-        
-        console.log('Películas cargadas:', this.peliculas.length);
       },
       error: (error) => {
         console.error('Error al cargar películas:', error);
@@ -189,7 +204,6 @@ export class ListarPeliculas implements OnInit {
     });
   }
 
-  // Método para abrir trailer
   abrirTrailer(trailerUrl: string | undefined, event?: Event) {
     if (event) {
       event.stopPropagation();
@@ -202,34 +216,46 @@ export class ListarPeliculas implements OnInit {
     }
   }
 
-  // Verificar si tiene trailer
   tieneTrailer(pelicula: Pelicula): boolean {
     return !!(pelicula.trailer_url && pelicula.trailer_url.trim() !== '');
   }
 
   verDetalle(pelicula: Pelicula, event?: Event) {
-  if (event) {
-    event.stopPropagation();
+    if (event) {
+      event.stopPropagation();
+    }
+    this.peliculaSeleccionada = pelicula;
+    document.body.style.overflow = 'hidden';
   }
-  this.peliculaSeleccionada = pelicula;
-  document.body.style.overflow = 'hidden';
-}
 
-cerrarDetalle() {
-  this.peliculaSeleccionada = null;
-  document.body.style.overflow = 'auto';
-}
+  cerrarDetalle() {
+    this.peliculaSeleccionada = null;
+    document.body.style.overflow = 'auto';
+  }
 
   editarPelicula(id: number, event?: Event) {
     if (event) {
       event.stopPropagation();
     }
+    
+    // Verificar permisos antes de navegar
+    if (!this.isAdmin) {
+      alert('No tienes permisos para editar películas');
+      return;
+    }
+    
     this.router.navigate(['/peliculas/editar', id]);
   }
 
   eliminarPelicula(id: number, event?: Event) {
     if (event) {
       event.stopPropagation();
+    }
+
+    // Verificar permisos antes de eliminar
+    if (!this.isAdmin) {
+      alert('No tienes permisos para eliminar películas');
+      return;
     }
 
     if (!confirm('¿Estás seguro de que deseas eliminar esta película? Esta acción no se puede deshacer.')) {
@@ -257,11 +283,16 @@ cerrarDetalle() {
   }
 
   crearNuevaPelicula() {
+    // Verificar permisos antes de navegar
+    if (!this.isAdmin) {
+      alert('No tienes permisos para crear películas');
+      return;
+    }
+    
     this.router.navigate(['/peliculas/crear']);
   }
 
   volverDashboard() {
     this.router.navigate(['/dashboard']);
   }
-  
 }

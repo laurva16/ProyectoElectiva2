@@ -8,7 +8,8 @@
       <h1>Gestión de Películas</h1>
       <p>Administra el catálogo completo de películas</p>
     </div>
-    <button class="btn-primary" (click)="crearNuevaPelicula()">
+    <!-- Botón Nueva Película - Solo visible para admin -->
+    <button *ngIf="isAdmin" class="btn-primary" (click)="crearNuevaPelicula()">
       <i class="fas fa-plus"></i>
       Nueva Película
     </button>
@@ -71,7 +72,9 @@
             <i class="fas fa-info"></i>
           </button>
           
+          <!-- Botones de edición y eliminación - Solo visible para admin -->
           <button 
+            *ngIf="isAdmin"
             class="overlay-btn" 
             (click)="editarPelicula(pelicula.id!, $event)"
             title="Editar película"
@@ -80,6 +83,7 @@
           </button>
           
           <button 
+            *ngIf="isAdmin"
             class="overlay-btn danger" 
             (click)="eliminarPelicula(pelicula.id!, $event)"
             title="Eliminar película"
@@ -117,8 +121,9 @@
   <div *ngIf="!loading && peliculasFiltradas.length === 0" class="empty-state">
     <i class="fas fa-film"></i>
     <h3>No se encontraron películas</h3>
-    <p>Intenta con otros términos de búsqueda o agrega una nueva película</p>
-    <button class="btn-primary" (click)="crearNuevaPelicula()">
+    <p>Intenta con otros términos de búsqueda{{ isAdmin ? ' o agrega una nueva película' : '' }}</p>
+    <!-- Botón solo visible para admin -->
+    <button *ngIf="isAdmin" class="btn-primary" (click)="crearNuevaPelicula()">
       <i class="fas fa-plus"></i>
       Agregar Primera Película
     </button>
@@ -127,12 +132,10 @@
   <!-- MODAL DE DETALLES -->
   <div *ngIf="peliculaSeleccionada" class="modal-overlay" (click)="cerrarDetalle()">
     <div class="modal-content" (click)="$event.stopPropagation()">
-      <!-- Botón cerrar -->
       <button class="modal-close" (click)="cerrarDetalle()">
         <i class="fas fa-times"></i>
       </button>
 
-      <!-- Header con imagen de fondo -->
       <div class="modal-header" [style.background-image]="'url(' + (peliculaSeleccionada.imagen_url || 'https://via.placeholder.com/1920x1080/1f1f1f/e50914') + ')'">
         <div class="modal-header-gradient">
           <div class="modal-header-content">
@@ -147,9 +150,7 @@
         </div>
       </div>
 
-      <!-- Cuerpo del modal -->
       <div class="modal-body">
-        <!-- Acciones principales -->
         <div class="modal-actions">
           <button 
             *ngIf="tieneTrailer(peliculaSeleccionada)" 
@@ -159,16 +160,13 @@
             <i class="fas fa-play"></i>
             Ver Trailer
           </button>
-
         </div>
 
-        <!-- Descripción -->
         <div class="modal-section">
           <h3 class="section-title">Sinopsis</h3>
           <p class="modal-description">{{ peliculaSeleccionada.descripcion }}</p>
         </div>
 
-        <!-- Información detallada -->
         <div class="modal-info-grid">
           <div class="info-item">
             <span class="info-label">Duración</span>

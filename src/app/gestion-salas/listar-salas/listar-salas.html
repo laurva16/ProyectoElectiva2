@@ -8,7 +8,8 @@
       <h1>Gestión de Salas</h1>
       <p>Administra las salas de cine</p>
     </div>
-    <button class="btn-primary" (click)="crearNuevaSala()">
+    <!-- Botón Nueva Sala - Solo visible para admin -->
+    <button *ngIf="isAdmin" class="btn-primary" (click)="crearNuevaSala()">
       <i class="fas fa-plus"></i>
       Nueva Sala
     </button>
@@ -118,7 +119,8 @@
           <i class="fas fa-info-circle"></i>
           Detalles
         </button>
-        <button class="btn-action btn-delete" (click)="eliminarSala(sala)">
+        <!-- Botón Eliminar - Solo visible para admin -->
+        <button *ngIf="isAdmin" class="btn-action btn-delete" (click)="eliminarSala(sala)">
           <i class="fas fa-trash"></i>
           Eliminar
         </button>
@@ -130,8 +132,9 @@
   <div *ngIf="!loading && salasFiltradas.length === 0" class="empty-state">
     <i class="fas fa-door-open"></i>
     <h3>No se encontraron salas</h3>
-    <p>Intenta ajustar los filtros o crea una nueva sala</p>
-    <button class="btn-primary" (click)="crearNuevaSala()">
+    <p>Intenta ajustar los filtros{{ isAdmin ? ' o crea una nueva sala' : '' }}</p>
+    <!-- Botón solo visible para admin -->
+    <button *ngIf="isAdmin" class="btn-primary" (click)="crearNuevaSala()">
       <i class="fas fa-plus"></i>
       Crear Primera Sala
     </button>

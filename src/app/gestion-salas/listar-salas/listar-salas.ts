@@ -40,6 +40,14 @@ export class ListarSalas implements OnInit {
   showModal = false;
   salaSeleccionada: Sala | null = null;
 
+  // Usuario actual
+  currentUser: any = null;
+
+  // Getter para verificar si es admin
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin';
+  }
+
   private apiUrl = 'http://localhost:5000/api/salas';
 
   constructor(
@@ -48,7 +56,17 @@ export class ListarSalas implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.loadCurrentUser();
     this.cargarSalas();
+  }
+
+  private loadCurrentUser() {
+    const userData = localStorage.getItem('cinemax_user') || 
+                    sessionStorage.getItem('cinemax_user');
+    
+    if (userData) {
+      this.currentUser = JSON.parse(userData);
+    }
   }
 
   cargarSalas() {
@@ -121,6 +139,12 @@ export class ListarSalas implements OnInit {
   }
 
   eliminarSala(sala: Sala) {
+    // Verificar permisos antes de eliminar
+    if (!this.isAdmin) {
+      alert('No tienes permisos para eliminar salas');
+      return;
+    }
+
     if (!confirm(`¿Estás seguro de eliminar la sala "${sala.nombre}"?`)) {
       return;
     }
@@ -147,6 +171,12 @@ export class ListarSalas implements OnInit {
   }
 
   crearNuevaSala() {
+    // Verificar permisos antes de navegar
+    if (!this.isAdmin) {
+      alert('No tienes permisos para crear salas');
+      return;
+    }
+    
     this.router.navigate(['/salas/crear']);
   }
 

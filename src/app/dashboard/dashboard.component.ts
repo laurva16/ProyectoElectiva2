@@ -41,11 +41,11 @@ interface ModuleCard {
             <i class="fas fa-ticket-alt"></i>
             <span *ngIf="!sidebarCollapsed">Tickets</span>
           </a>
-          <a *ngIf="currentUser?.role === 'admin'" class="nav-item" [routerLink]="['/usuarios/listar']">
+          <a *ngIf="isAdmin" class="nav-item" [routerLink]="['/usuarios/listar']">
             <i class="fas fa-users"></i>
             <span *ngIf="!sidebarCollapsed">Usuarios</span>
           </a>
-          <a *ngIf="currentUser?.role === 'admin'" class="nav-item" [routerLink]="['/reportes/listar']">
+          <a *ngIf="isAdmin" class="nav-item" [routerLink]="['/reportes/listar']">
             <i class="fas fa-chart-bar"></i>
             <span *ngIf="!sidebarCollapsed">Reportes</span>
           </a>
@@ -67,11 +67,10 @@ interface ModuleCard {
               <i class="fas" [class.fa-bars]="sidebarCollapsed" [class.fa-times]="!sidebarCollapsed"></i>
             </button>
             <div class="search-bar">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Buscar películas, salas, tickets...">
+              <i class="fas fa-search"></i>
+              <input type="text" placeholder="Buscar películas, salas, tickets...">
+            </div>
           </div>
-          </div>
-        
           
           <div class="header-actions">
             <button class="notification-btn">
@@ -116,12 +115,10 @@ interface ModuleCard {
           </div>
 
           <div class="modules-grid">
-            <div *ngFor="let module of modules" 
+            <div *ngFor="let module of visibleModules" 
                  class="module-card"
-                 [class.admin-only]="module.adminOnly && currentUser?.role !== 'admin'"
                  [style.--module-color]="module.color"
-                 (click)="navigateTo(module.route)"
-                 [class.disabled]="module.adminOnly && currentUser?.role !== 'admin'">
+                 (click)="navigateTo(module.route)">
               <div class="module-icon">
                 <i [class]="module.icon"></i>
               </div>
@@ -132,9 +129,6 @@ interface ModuleCard {
               <button class="module-action">
                 <i class="fas fa-arrow-right"></i>
               </button>
-              <div *ngIf="module.adminOnly && currentUser?.role !== 'admin'" class="admin-badge">
-                <i class="fas fa-lock"></i>
-              </div>
             </div>
           </div>
         </section>
@@ -205,7 +199,6 @@ interface ModuleCard {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
-    /* Sidebar */
     .sidebar {
       width: 260px;
       background: #141414;
@@ -297,7 +290,6 @@ interface ModuleCard {
       color: #e50914;
     }
 
-    /* Main Content */
     .main-content {
       flex: 1;
       margin-left: 260px;
@@ -307,7 +299,7 @@ interface ModuleCard {
     .main-content.expanded {
       margin-left: 80px;
     }
-    /* Header */
+
     .header {
       display: flex;
       justify-content: space-between;
@@ -318,6 +310,32 @@ interface ModuleCard {
       position: sticky;
       top: 0;
       z-index: 10;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      max-width: 600px;
+    }
+
+    .toggle-sidebar-btn {
+      background: #1f1f1f;
+      border: 1px solid #2a2a2a;
+      color: #a0a0a0;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 1.1rem;
+    }
+
+    .toggle-sidebar-btn:hover {
+      background: rgba(229, 9, 20, 0.1);
+      border-color: #e50914;
+      color: #e50914;
     }
 
     .search-bar {
@@ -431,7 +449,6 @@ interface ModuleCard {
       color: #e50914;
     }
 
-    /* Hero Section */
     .hero-section {
       background: linear-gradient(135deg, #1f1f1f 0%, #141414 100%);
       padding: 3rem 2rem;
@@ -491,7 +508,6 @@ interface ModuleCard {
       z-index: 1;
     }
 
-    /* Modules Section */
     .modules-section {
       padding: 2rem;
     }
@@ -551,11 +567,6 @@ interface ModuleCard {
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
 
-    .module-card.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
     .module-icon {
       width: 50px;
       height: 50px;
@@ -599,18 +610,6 @@ interface ModuleCard {
       color: white;
     }
 
-    .admin-badge {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: rgba(255, 165, 0, 0.2);
-      color: #ffa500;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-    }
-
-    /* Stats Section */
     .stats-section {
       padding: 2rem;
     }
@@ -655,38 +654,19 @@ interface ModuleCard {
       color: #666;
       font-size: 0.85rem;
     }
-        .header-left {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex: 1;
-      max-width: 600px;
-    }
-
-    .toggle-sidebar-btn {
-      background: #1f1f1f;
-      border: 1px solid #2a2a2a;
-      color: #a0a0a0;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 1.1rem;
-    }
-
-    .toggle-sidebar-btn:hover {
-      background: rgba(229, 9, 20, 0.1);
-      border-color: #e50914;
-      color: #e50914;
-    }
   `]
 })
 export class DashboardComponent implements OnInit {
   currentUser: any = null;
   sidebarCollapsed: boolean = false;
   
-  modules: ModuleCard[] = [
+  // Getter para verificar si es admin
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin';
+  }
+  
+  // Lista completa de módulos
+  private allModules: ModuleCard[] = [
     {
       title: 'Películas',
       description: 'Gestiona el catálogo completo de películas',
@@ -726,6 +706,14 @@ export class DashboardComponent implements OnInit {
     }
   ];
 
+  // Módulos visibles según el rol del usuario
+  get visibleModules(): ModuleCard[] {
+    if (this.isAdmin) {
+      return this.allModules;
+    }
+    return this.allModules.filter(module => !module.adminOnly);
+  }
+
   constructor(private router: Router) {}
 
   ngOnInit() {
@@ -742,10 +730,6 @@ export class DashboardComponent implements OnInit {
   }
 
   navigateTo(route: string) {
-    const module = this.modules.find(m => m.route === route);
-    if (module?.adminOnly && this.currentUser?.role !== 'admin') {
-      return;
-    }
     this.router.navigate([route]);
   }
 
@@ -756,6 +740,7 @@ export class DashboardComponent implements OnInit {
     sessionStorage.removeItem('cinemax_user');
     this.router.navigate(['/login']);
   }
+  
   toggleSidebar() {
     this.sidebarCollapsed = !this.sidebarCollapsed;
   }
