@@ -1,1 +1,229 @@
-<p>listar-salas works!</p>
+<div class="salas-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volver()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Gestión de Salas</h1>
+      <p>Administra las salas de cine</p>
+    </div>
+    <button class="btn-primary" (click)="crearNuevaSala()">
+      <i class="fas fa-plus"></i>
+      Nueva Sala
+    </button>
+  </header>
+
+  <!-- Barra de Filtros -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Buscar salas..."
+      >
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="filtroTipo" (ngModelChange)="onFiltroTipoChange()">
+        <option value="">Todos los tipos</option>
+        <option value="Estándar">Estándar</option>
+        <option value="VIP">VIP</option>
+        <option value="IMAX">IMAX</option>
+        <option value="4DX">4DX</option>
+        <option value="Premium">Premium</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="filtroEstado" (ngModelChange)="onFiltroEstadoChange()">
+        <option value="">Todos los estados</option>
+        <option value="activa">Activa</option>
+        <option value="mantenimiento">Mantenimiento</option>
+        <option value="inactiva">Inactiva</option>
+      </select>
+    </div>
+
+    <div class="results-count">
+      <span>{{ salasFiltradas.length }}</span> sala{{ salasFiltradas.length !== 1 ? 's' : '' }}
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando salas...</p>
+  </div>
+
+  <!-- Grid de Salas -->
+  <div *ngIf="!loading && salasFiltradas.length > 0" class="salas-grid">
+    <div 
+      *ngFor="let sala of salasFiltradas" 
+      class="sala-card"
+    >
+      <div class="sala-header">
+        <div class="sala-icon" [ngClass]="getClaseTipo(sala.tipo)">
+          <i class="fas" [ngClass]="getIconoTipo(sala.tipo)"></i>
+        </div>
+        <span class="sala-badge" [ngClass]="sala.estado">
+          {{ sala.estado }}
+        </span>
+      </div>
+
+      <div class="sala-body">
+        <h3 class="sala-nombre">{{ sala.nombre }}</h3>
+        <p class="sala-descripcion" *ngIf="sala.descripcion">
+          {{ sala.descripcion }}
+        </p>
+
+        <div class="sala-stats">
+          <div class="stat-item">
+            <i class="fas fa-chair"></i>
+            <div class="stat-content">
+              <span class="stat-label">Capacidad</span>
+              <span class="stat-value">{{ sala.capacidad }} asientos</span>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <i class="fas fa-film"></i>
+            <div class="stat-content">
+              <span class="stat-label">Tipo</span>
+              <span class="stat-value">{{ sala.tipo }}</span>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <i class="fas fa-video"></i>
+            <div class="stat-content">
+              <span class="stat-label">Tecnología</span>
+              <span class="stat-value">{{ sala.tecnologia }}</span>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <i class="fas fa-dollar-sign"></i>
+            <div class="stat-content">
+              <span class="stat-label">Precio base</span>
+              <span class="stat-value">${{ sala.precio_base }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sala-actions">
+        <button class="btn-action btn-info" (click)="verDetalle(sala)">
+          <i class="fas fa-info-circle"></i>
+          Detalles
+        </button>
+        <button class="btn-action btn-delete" (click)="eliminarSala(sala)">
+          <i class="fas fa-trash"></i>
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && salasFiltradas.length === 0" class="empty-state">
+    <i class="fas fa-door-open"></i>
+    <h3>No se encontraron salas</h3>
+    <p>Intenta ajustar los filtros o crea una nueva sala</p>
+    <button class="btn-primary" (click)="crearNuevaSala()">
+      <i class="fas fa-plus"></i>
+      Crear Primera Sala
+    </button>
+  </div>
+
+  <!-- Modal de Detalles -->
+  <div *ngIf="showModal && salaSeleccionada" class="modal-overlay" (click)="cerrarModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="cerrarModal()">
+        <i class="fas fa-times"></i>
+      </button>
+
+      <div class="modal-header">
+        <div class="modal-icon" [ngClass]="getClaseTipo(salaSeleccionada.tipo)">
+          <i class="fas" [ngClass]="getIconoTipo(salaSeleccionada.tipo)"></i>
+        </div>
+        <div>
+          <h2 class="modal-title">{{ salaSeleccionada.nombre }}</h2>
+          <div class="modal-badges">
+            <span class="badge-tipo" [ngClass]="salaSeleccionada.tipo.toLowerCase()">
+              {{ salaSeleccionada.tipo }}
+            </span>
+            <span class="badge-estado" [ngClass]="salaSeleccionada.estado">
+              {{ salaSeleccionada.estado }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-section" *ngIf="salaSeleccionada.descripcion">
+          <h3 class="section-title">Descripción</h3>
+          <p class="modal-description">{{ salaSeleccionada.descripcion }}</p>
+        </div>
+
+        <div class="modal-section">
+          <h3 class="section-title">Información General</h3>
+          <div class="modal-info-grid">
+            <div class="info-item">
+              <span class="info-label">Capacidad Total</span>
+              <span class="info-value">
+                <i class="fas fa-chair"></i>
+                {{ salaSeleccionada.capacidad }} asientos
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Filas</span>
+              <span class="info-value">
+                <i class="fas fa-grip-horizontal"></i>
+                {{ salaSeleccionada.filas }} filas
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Asientos por Fila</span>
+              <span class="info-value">
+                <i class="fas fa-grip-vertical"></i>
+                {{ salaSeleccionada.asientos_por_fila }} asientos
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Tecnología</span>
+              <span class="info-value">
+                <i class="fas fa-video"></i>
+                {{ salaSeleccionada.tecnologia }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Precio Base</span>
+              <span class="info-value">
+                <i class="fas fa-dollar-sign"></i>
+                ${{ salaSeleccionada.precio_base }}
+              </span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Estado</span>
+              <span class="info-value" [ngClass]="'estado-' + salaSeleccionada.estado">
+                <i class="fas" [ngClass]="{
+                  'fa-check-circle': salaSeleccionada.estado === 'activa',
+                  'fa-wrench': salaSeleccionada.estado === 'mantenimiento',
+                  'fa-times-circle': salaSeleccionada.estado === 'inactiva'
+                }"></i>
+                {{ salaSeleccionada.estado }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

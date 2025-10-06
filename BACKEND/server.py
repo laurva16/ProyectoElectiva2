@@ -9,12 +9,14 @@ from config import JWT_SECRET, JWT_ALGORITHM, PORT, DEBUG
 from models import Usuario, Pelicula
 from peliculas import peliculas_bp
 from usuarios import usuarios_bp
+from salas import salas_bp  # ✅ AGREGAR ESTA LÍNEA
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:4200"], supports_credentials=True)
 
 app.register_blueprint(peliculas_bp)
 app.register_blueprint(usuarios_bp)
+app.register_blueprint(salas_bp)  # ✅ REGISTRAR EL BLUEPRINT
 
 def generate_jwt_token(user):
     payload = {
@@ -209,6 +211,7 @@ if __name__ == '__main__':
     print("JWT Autenticación activa")
     print("Base de datos: MongoDB Atlas")
     print("Módulo de Películas cargado")
-    print("Módulo de Usuarios cargado")  # AGREGAR ESTA LÍNEA
+    print("Módulo de Usuarios cargado")
+    print("Módulo de Salas cargado")  # ✅ AGREGAR ESTA LÍNEA
     print("=" * 60)
     app.run(port=PORT, debug=DEBUG)

@@ -1,1 +1,219 @@
-<p>crear-salas works!</p>
+<div class="crear-sala-container">
+  <!-- Header -->
+  <header class="page-header">
+    <button class="btn-back" (click)="volver()">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <div class="header-info">
+      <h1>Crear Nueva Sala</h1>
+      <p>Agrega una sala al sistema de cine</p>
+    </div>
+  </header>
+
+  <!-- Alert Messages -->
+  <div *ngIf="errorMessage" class="alert alert-error">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    {{ successMessage }}
+  </div>
+
+  <!-- Formulario -->
+  <form [formGroup]="salaForm" (ngSubmit)="onSubmit()" class="sala-form">
+    
+    <!-- Información Básica -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-info-circle"></i>
+        Información Básica
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label for="nombre">Nombre de la Sala <span class="required">*</span></label>
+          <input 
+            type="text" 
+            id="nombre" 
+            formControlName="nombre"
+            placeholder="Ej: Sala VIP Premium"
+            [class.invalid]="isFieldInvalid('nombre')"
+          >
+          <span *ngIf="isFieldInvalid('nombre')" class="error-message">
+            {{ getFieldError('nombre') }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tipo">Tipo de Sala <span class="required">*</span></label>
+          <select 
+            id="tipo" 
+            formControlName="tipo"
+            [class.invalid]="isFieldInvalid('tipo')"
+          >
+            <option value="">Selecciona un tipo</option>
+            <option *ngFor="let tipo of tipos" [value]="tipo">
+              {{ tipo }}
+            </option>
+          </select>
+          <span *ngIf="isFieldInvalid('tipo')" class="error-message">
+            {{ getFieldError('tipo') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="tecnologia">Tecnología <span class="required">*</span></label>
+          <select 
+            id="tecnologia" 
+            formControlName="tecnologia"
+            [class.invalid]="isFieldInvalid('tecnologia')"
+          >
+            <option value="">Selecciona tecnología</option>
+            <option *ngFor="let tecnologia of tecnologias" [value]="tecnologia">
+              {{ tecnologia }}
+            </option>
+          </select>
+          <span *ngIf="isFieldInvalid('tecnologia')" class="error-message">
+            {{ getFieldError('tecnologia') }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="estado">Estado <span class="required">*</span></label>
+          <select 
+            id="estado" 
+            formControlName="estado"
+            [class.invalid]="isFieldInvalid('estado')"
+          >
+            <option value="activa">Activa</option>
+            <option value="mantenimiento">Mantenimiento</option>
+            <option value="inactiva">Inactiva</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capacidad y Distribución -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-th"></i>
+        Capacidad y Distribución
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="filas">Número de Filas <span class="required">*</span></label>
+          <input 
+            type="number" 
+            id="filas" 
+            formControlName="filas"
+            placeholder="10"
+            [class.invalid]="isFieldInvalid('filas')"
+          >
+          <span *ngIf="isFieldInvalid('filas')" class="error-message">
+            {{ getFieldError('filas') }}
+          </span>
+          <small class="help-text">Entre 1 y 30 filas</small>
+        </div>
+
+        <div class="form-group">
+          <label for="asientos_por_fila">Asientos por Fila <span class="required">*</span></label>
+          <input 
+            type="number" 
+            id="asientos_por_fila" 
+            formControlName="asientos_por_fila"
+            placeholder="15"
+            [class.invalid]="isFieldInvalid('asientos_por_fila')"
+          >
+          <span *ngIf="isFieldInvalid('asientos_por_fila')" class="error-message">
+            {{ getFieldError('asientos_por_fila') }}
+          </span>
+          <small class="help-text">Entre 5 y 50 asientos</small>
+        </div>
+
+        <div class="form-group">
+          <label for="capacidad">Capacidad Total <span class="required">*</span></label>
+          <input 
+            type="number" 
+            id="capacidad" 
+            formControlName="capacidad"
+            placeholder="150"
+            readonly
+            [class.invalid]="isFieldInvalid('capacidad')"
+          >
+          <span *ngIf="isFieldInvalid('capacidad')" class="error-message">
+            {{ getFieldError('capacidad') }}
+          </span>
+          <small class="help-text">Calculado automáticamente</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Precio -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-dollar-sign"></i>
+        Precio
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="precio_base">Precio Base (USD) <span class="required">*</span></label>
+          <input 
+            type="number" 
+            id="precio_base" 
+            formControlName="precio_base"
+            placeholder="12.99"
+            step="0.01"
+            [class.invalid]="isFieldInvalid('precio_base')"
+          >
+          <span *ngIf="isFieldInvalid('precio_base')" class="error-message">
+            {{ getFieldError('precio_base') }}
+          </span>
+          <small class="help-text">Precio base del boleto en esta sala</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Descripción -->
+    <div class="form-section">
+      <h2 class="section-title">
+        <i class="fas fa-align-left"></i>
+        Descripción
+      </h2>
+
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label for="descripcion">Descripción de la Sala</label>
+          <textarea 
+            id="descripcion" 
+            formControlName="descripcion"
+            rows="4"
+            placeholder="Describe las características especiales de esta sala..."
+            [class.invalid]="isFieldInvalid('descripcion')"
+          ></textarea>
+          <span *ngIf="isFieldInvalid('descripcion')" class="error-message">
+            {{ getFieldError('descripcion') }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="volver()" [disabled]="loading">
+        <i class="fas fa-times"></i>
+        Cancelar
+      </button>
+      
+      <button type="submit" class="btn-primary" [disabled]="loading || salaForm.invalid">
+        <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-save]="!loading"></i>
+        {{ loading ? 'Guardando...' : 'Crear Sala' }}
+      </button>
+    </div>
+  </form>
+</div>
