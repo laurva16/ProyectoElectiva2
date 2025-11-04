@@ -1,23 +1,11 @@
 import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
 import { CommonModule } from '@angular/common';
-
-const routes: Routes = [
-  {
-    path: '',
-    redirectTo: 'listar',
-    pathMatch: 'full'
-  },
-  {
-    path: 'listar',
-    loadComponent: () => import('./listar-reportes/listar-reportes').then(m => m.ListarReportes)
-  }
-];
+import { GestionReportesRoutingModule } from './gestion-reportes-routing-module';
 
 @NgModule({
   imports: [
     CommonModule,
-    RouterModule.forChild(routes)
+    GestionReportesRoutingModule
   ]
 })
 export class GestionReportesModule { }

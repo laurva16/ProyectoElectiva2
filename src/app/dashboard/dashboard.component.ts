@@ -1,8 +1,9 @@
-// src/app/dashboard/dashboard.component.ts - CORREGIDO
-import { Component, OnInit } from '@angular/core';
+// src/app/dashboard/dashboard.component.ts - ACTUALIZACIÓN AUTOMÁTICA
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { EstadisticasService } from '../services/estadisticas.service';
+import { interval, Subscription } from 'rxjs';
 
 interface ModuleCard {
   title: string;
@@ -29,13 +30,17 @@ interface Estadisticas {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   currentUser: any = null;
   sidebarCollapsed: boolean = false;
   estadisticas: Estadisticas | null = null;
   cargandoEstadisticas: boolean = false;
   errorEstadisticas: string = '';
   Math = Math;
+  
+  // Variables para control de actualizaciones automáticas
+  private actualizacionSubscription?: Subscription;
+  private readonly INTERVALO_ACTUALIZACION = 30000; // 30 segundos
   
   get isAdmin(): boolean {
     return this.currentUser?.role === 'admin';
@@ -94,10 +99,24 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    console.log('🚀 Inicializando Dashboard...');
     this.loadCurrentUser();
-    // ✅ SOLO CARGAR ESTADÍSTICAS SI ES ADMIN
+    
+    // SOLO CARGAR ESTADÍSTICAS SI ES ADMIN
     if (this.isAdmin) {
+      console.log('✅ Usuario es ADMIN - Cargando estadísticas...');
       this.cargarEstadisticas();
+      this.iniciarActualizacionAutomatica();
+    } else {
+      console.log('ℹ️ Usuario NO es admin - No se cargan estadísticas');
+    }
+  }
+
+  ngOnDestroy() {
+    // Limpiar suscripción cuando se destruya el componente
+    if (this.actualizacionSubscription) {
+      this.actualizacionSubscription.unsubscribe();
+      console.log('🔴 Actualizaciones automáticas detenidas');
     }
   }
 
@@ -107,34 +126,86 @@ export class DashboardComponent implements OnInit {
     
     if (userData) {
       this.currentUser = JSON.parse(userData);
-      console.log('Usuario actual:', this.currentUser); // ✅ DEBUG
+      console.log('👤 Usuario cargado:', {
+        nombre: this.currentUser.name,
+        role: this.currentUser.role,
+        esAdmin: this.isAdmin
+      });
+    } else {
+      console.warn('⚠️ No se encontró información del usuario');
     }
   }
 
-  cargarEstadisticas() {
-    // ✅ VERIFICAR NUEVAMENTE QUE SEA ADMIN
+  private iniciarActualizacionAutomatica() {
+    const intervaloSegundos = this.INTERVALO_ACTUALIZACION / 1000;
+    console.log(`🔄 Iniciando actualizaciones automáticas cada ${intervaloSegundos}s`);
+    
+    // Crear un observable que emita cada X segundos
+    this.actualizacionSubscription = interval(this.INTERVALO_ACTUALIZACION).subscribe(() => {
+      const ahora = new Date().toLocaleTimeString('es-CO');
+      console.log(`⏰ [${ahora}] Actualizando estadísticas automáticamente...`);
+      this.cargarEstadisticas(true); // true = actualización silenciosa (sin loader)
+    });
+  }
+
+  cargarEstadisticas(silencioso: boolean = false) {
+    // VERIFICAR QUE SEA ADMIN
     if (!this.isAdmin) {
-      console.log('No es admin, no se cargan estadísticas');
+      console.log('⚠️ No es admin, no se cargan estadísticas');
       return;
     }
 
-    this.cargandoEstadisticas = true;
+    // Solo mostrar loader si NO es actualización silenciosa
+    if (!silencioso) {
+      this.cargandoEstadisticas = true;
+      console.log('📊 Cargando estadísticas (con loader)...');
+    } else {
+      console.log('📊 Actualizando estadísticas (en segundo plano)...');
+    }
+    
     this.errorEstadisticas = '';
 
     this.estadisticasService.obtenerEstadisticasRapidas().subscribe({
       next: (response) => {
-        console.log('Respuesta estadísticas:', response); // ✅ DEBUG
-        if (response.success) {
+        console.log('📥 Respuesta del servidor:', response);
+        
+        if (response.success && response.data) {
+          const estadisticasAnteriores = this.estadisticas;
           this.estadisticas = response.data;
-          console.log('Estadísticas cargadas:', this.estadisticas); // ✅ DEBUG
+          
+          // Comparar valores para detectar cambios (solo si hay estadísticas anteriores Y nuevas)
+          if (estadisticasAnteriores && this.estadisticas) {
+            const cambioTickets = this.estadisticas.tickets_vendidos_hoy - estadisticasAnteriores.tickets_vendidos_hoy;
+            const cambioIngresos = this.estadisticas.ingresos_hoy - estadisticasAnteriores.ingresos_hoy;
+            
+            if (cambioTickets !== 0 || cambioIngresos !== 0) {
+              console.log('🔔 CAMBIOS DETECTADOS:');
+              console.log(`   📊 Tickets: ${estadisticasAnteriores.tickets_vendidos_hoy} → ${this.estadisticas.tickets_vendidos_hoy} (${cambioTickets > 0 ? '+' : ''}${cambioTickets})`);
+              console.log(`   💰 Ingresos: $${estadisticasAnteriores.ingresos_hoy} → $${this.estadisticas.ingresos_hoy} (${cambioIngresos > 0 ? '+' : ''}$${cambioIngresos})`);
+            } else {
+              console.log('ℹ️ Sin cambios en las estadísticas');
+            }
+          }
+          
+          if (!silencioso) {
+            console.log('✅ Estadísticas cargadas correctamente:', this.estadisticas);
+          } else {
+            console.log('✅ Estadísticas actualizadas en segundo plano');
+          }
         } else {
           this.errorEstadisticas = response.message || 'Error al cargar estadísticas';
+          console.error('❌ Error en respuesta:', this.errorEstadisticas);
         }
         this.cargandoEstadisticas = false;
       },
       error: (error) => {
-        console.error('Error al cargar estadísticas:', error);
-        this.errorEstadisticas = 'No se pudieron cargar las estadísticas. Intente nuevamente.';
+        console.error('❌ Error al cargar estadísticas:', error);
+        console.error('   Status:', error.status);
+        console.error('   Mensaje:', error.message);
+        
+        if (!silencioso) {
+          this.errorEstadisticas = 'No se pudieron cargar las estadísticas. Intente nuevamente.';
+        }
         this.cargandoEstadisticas = false;
       }
     });
@@ -160,6 +231,14 @@ export class DashboardComponent implements OnInit {
   }
 
   logout() {
+    console.log('👋 Cerrando sesión...');
+    
+    // Detener actualizaciones antes de cerrar sesión
+    if (this.actualizacionSubscription) {
+      this.actualizacionSubscription.unsubscribe();
+      console.log('🔴 Actualizaciones detenidas');
+    }
+    
     localStorage.removeItem('cinemax_token');
     localStorage.removeItem('cinemax_user');
     sessionStorage.removeItem('cinemax_token');

@@ -51,7 +51,26 @@ export class ListarTickets implements OnInit {
   ) {}
 
   ngOnInit() {
+    // Inicializar el filtro de fecha con el mes actual
+    this.inicializarFiltroFecha();
     this.cargarTickets();
+  }
+
+  private inicializarFiltroFecha() {
+    // Establecer filtro de fecha para el mes actual por defecto
+    const hoy = new Date();
+    // Formato: YYYY-MM para el input type="month"
+    const año = hoy.getFullYear();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    
+    // Si tu HTML usa input type="date", usa esto:
+    // this.filtroFecha = `${año}-${mes}-${String(hoy.getDate()).padStart(2, '0')}`;
+    
+    // Si tu HTML usa input type="month", usa esto:
+    // this.filtroFecha = `${año}-${mes}`;
+    
+    // Por ahora, lo dejamos vacío para mostrar todos los tickets
+    console.log('📅 Filtro de fecha inicializado para:', `${año}-${mes}`);
   }
 
   cargarTickets() {
@@ -68,12 +87,13 @@ export class ListarTickets implements OnInit {
         this.loading = false;
         if (response.success) {
           this.tickets = response.data;
+          console.log(`✅ ${this.tickets.length} tickets cargados`);
           this.aplicarFiltros();
         }
       },
       error: (error) => {
         this.loading = false;
-        console.error('Error al cargar tickets:', error);
+        console.error('❌ Error al cargar tickets:', error);
         
         if (error.status === 401) {
           this.router.navigate(['/login']);
@@ -95,6 +115,8 @@ export class ListarTickets implements OnInit {
       
       return cumpleBusqueda && cumpleEstado && cumpleFecha;
     });
+    
+    console.log(`🔍 Filtros aplicados: ${this.ticketsFiltrados.length} tickets mostrados`);
   }
 
   onSearchChange() {

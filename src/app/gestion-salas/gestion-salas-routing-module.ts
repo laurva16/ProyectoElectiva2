@@ -1,9 +1,6 @@
 import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { RouterModule, Routes } from '@angular/router';
-import { GestionSalasRoutingModule } from './gestion-salas-routing-module';
 
-// Define las rutas del módulo
 const routes: Routes = [
   {
     path: 'listar',
@@ -21,10 +18,7 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  imports: [
-    CommonModule,
-    RouterModule.forChild(routes),
-    GestionSalasRoutingModule
-  ]
+  imports: [RouterModule.forChild(routes)],
+  exports: [RouterModule]
 })
-export class GestionSalasModule { }
+export class GestionSalasRoutingModule { }

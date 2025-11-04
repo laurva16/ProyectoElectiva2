@@ -78,7 +78,7 @@ def convertir_precio(precio):
 @reportes_bp.route('/estadisticas-rapidas', methods=['GET'])
 @jwt_required
 def obtener_estadisticas_rapidas():
-    """Obtener estadísticas rápidas para el dashboard - SOLO ADMIN"""
+    """Obtener estadísticas rápidas para el dashboard - VERSIÓN CORREGIDA"""
     try:
         # ✅ VERIFICAR QUE SEA ADMIN
         user_data = request.current_user
@@ -90,30 +90,65 @@ def obtener_estadisticas_rapidas():
         
         from datetime import datetime, timedelta
         
-        # Fecha de hoy
-        hoy = datetime.now().strftime('%Y-%m-%d')
+        # Fecha de hoy (solo fecha, sin hora)
+        hoy = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        hoy_str = hoy.strftime('%Y-%m-%d')
         
-        # 1. Total de películas (SIN FILTRO DE ESTADO o con el estado correcto)
-        # ✅ CAMBIO: Contar TODAS las películas o ajustar el campo
+        print(f"\n{'='*60}")
+        print(f"📊 CALCULANDO ESTADÍSTICAS RÁPIDAS")
+        print(f"{'='*60}")
+        print(f"Fecha actual: {hoy_str}")
+        print(f"Hora actual: {datetime.now().strftime('%H:%M:%S')}")
+        
+        # 1. Total de películas
         total_peliculas = peliculas_collection.count_documents({})
-        # Si tus películas tienen campo 'activo' boolean: 
-        # total_peliculas = peliculas_collection.count_documents({"activo": True})
+        print(f"🎬 Total películas: {total_peliculas}")
         
-        # 2. Tickets vendidos hoy
-        tickets_hoy = tickets_collection.count_documents({
-            "fecha_funcion": hoy,
+        # ✅ 2. TICKETS VENDIDOS HOY - USAR created_at en lugar de fecha_funcion
+        # Buscar tickets creados HOY (sin importar la fecha de la función)
+        filtro_tickets_hoy = {
             "estado": {"$in": ["pagado", "reservado"]}
+        }
+        
+        # Si tienes campo created_at como string 'YYYY-MM-DD'
+        tickets_hoy = tickets_collection.count_documents({
+            **filtro_tickets_hoy,
+            "created_at": {"$regex": f"^{hoy_str}"}
         })
         
-        # 3. Ingresos de hoy
+        # Si NO funciona el regex, intenta esto:
+        # tickets_hoy = tickets_collection.count_documents({
+        #     **filtro_tickets_hoy,
+        #     "$expr": {
+        #         "$eq": [
+        #             {"$substr": ["$created_at", 0, 10]},
+        #             hoy_str
+        #         ]
+        #     }
+        # })
+        
+        print(f"🎫 Tickets vendidos hoy: {tickets_hoy}")
+        
+        # ✅ 3. INGRESOS DE HOY - También usando created_at
         tickets_hoy_data = list(tickets_collection.find({
-            "fecha_funcion": hoy,
-            "estado": {"$in": ["pagado", "reservado"]}
+            **filtro_tickets_hoy,
+            "created_at": {"$regex": f"^{hoy_str}"}
         }))
+        
         ingresos_hoy = sum(convertir_precio(t.get('precio', 0)) for t in tickets_hoy_data)
+        print(f"💰 Ingresos hoy: ${ingresos_hoy:,.2f}")
+        
+        # Debug: Mostrar algunos tickets encontrados
+        if tickets_hoy_data:
+            print(f"\n📝 Ejemplo de tickets de hoy:")
+            for i, ticket in enumerate(tickets_hoy_data[:3], 1):
+                print(f"   {i}. ID: {ticket.get('id', 'N/A')} - Precio: ${ticket.get('precio', 0)} - Creado: {ticket.get('created_at', 'N/A')}")
+        else:
+            print("⚠️ No se encontraron tickets creados hoy")
         
         # 4. Total de salas
         total_salas = salas_collection.count_documents({})
+        print(f"🏛️ Total salas: {total_salas}")
         
         # 5. Total de usuarios
         try:
@@ -121,13 +156,16 @@ def obtener_estadisticas_rapidas():
             total_usuarios = usuarios_collection.count_documents({})
         except:
             total_usuarios = 0
+        print(f"👥 Total usuarios: {total_usuarios}")
         
-        # 6. Tickets de ayer para comparación
-        ayer = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        # ✅ 6. Tickets de ayer para comparación
+        ayer = (hoy - timedelta(days=1)).strftime('%Y-%m-%d')
         tickets_ayer = tickets_collection.count_documents({
-            "fecha_funcion": ayer,
-            "estado": {"$in": ["pagado", "reservado"]}
+            **filtro_tickets_hoy,
+            "created_at": {"$regex": f"^{ayer}"}
         })
+        
+        print(f"📊 Tickets ayer: {tickets_ayer}")
         
         # Calcular porcentaje de cambio vs ayer
         if tickets_ayer > 0:
@@ -135,14 +173,11 @@ def obtener_estadisticas_rapidas():
         else:
             cambio_tickets = 100 if tickets_hoy > 0 else 0
         
-        # ✅ LOG PARA DEBUG
-        print(f"DEBUG Estadísticas:")
-        print(f"- Total películas: {total_peliculas}")
-        print(f"- Tickets hoy: {tickets_hoy}")
-        print(f"- Ingresos hoy: {ingresos_hoy}")
-        print(f"- Total salas: {total_salas}")
+        print(f"📈 Cambio vs ayer: {cambio_tickets:+.2f}%")
+        print(f"{'='*60}\n")
         
-        return jsonify({
+        # Preparar respuesta
+        respuesta = {
             'success': True,
             'data': {
                 'total_peliculas': total_peliculas,
@@ -153,12 +188,19 @@ def obtener_estadisticas_rapidas():
                 'cambio_tickets': round(cambio_tickets, 2),
                 'fecha_actualizacion': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
-        }), 200
+        }
+        
+        print(f"✅ Respuesta preparada: {respuesta['data']}\n")
+        
+        return jsonify(respuesta), 200
         
     except Exception as e:
-        print(f"Error en estadisticas_rapidas: {str(e)}")
+        print(f"\n❌ ERROR en estadisticas_rapidas:")
+        print(f"   {str(e)}")
         import traceback
         traceback.print_exc()
+        print()
+        
         return jsonify({
             'success': False,
             'message': f'Error al obtener estadísticas: {str(e)}'
