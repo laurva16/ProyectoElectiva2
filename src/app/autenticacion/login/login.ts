@@ -1,8 +1,10 @@
+// src/app/autenticacion/login/login.ts
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router,RouterModule  } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { API_CONFIG } from '../../app.config';
 
 interface LoginCredentials {
   email: string;
@@ -35,39 +37,36 @@ interface ConnectionStatus {
   imports: [CommonModule, FormsModule, HttpClientModule, RouterModule],
   templateUrl: './login.html',
   styleUrls: ['./login.css'],
-  encapsulation: ViewEncapsulation.None  // Esto hace que los estilos se apliquen globalmente
+  encapsulation: ViewEncapsulation.None
 })
 export class Login implements OnInit {
-  // Propiedades del componente
   credentials: LoginCredentials = {
     email: '',
     password: '',
     rememberMe: false
   };
 
-  // Estados del componente
   isLoading = false;
   showPassword = false;
   alertMessage = '';
   alertType: 'success' | 'error' | 'warning' = 'success';
   
-  // Errores de validación
   emailError = '';
   passwordError = '';
 
-  // Estado de conexión
   connectionStatus: ConnectionStatus = {
     isOnline: false,
     message: 'Verificando conexión...'
   };
 
-  // Configuración de API
-  private apiUrl = 'http://localhost:5000/api';
+  private apiUrl = API_CONFIG.BASE_URL;
 
   constructor(
     private router: Router,
     private http: HttpClient
-  ) {}
+  ) {
+    console.log('📡 Login usando API:', this.apiUrl);
+  }
 
   ngOnInit() {
     this.checkConnection();
@@ -83,7 +82,6 @@ export class Login implements OnInit {
     this.clearErrors();
 
     try {
-      // Simulación de llamada a API (reemplaza con tu servicio real)
       const response = await this.authenticateUser(this.credentials);
       
       if (response.success && response.data) {
@@ -92,6 +90,7 @@ export class Login implements OnInit {
         this.handleFailedLogin(response.message || 'Error de autenticación');
       }
     } catch (error) {
+      console.error('❌ Error de login:', error);
       this.handleFailedLogin('Error de conexión. Verifica que el servidor esté ejecutándose.');
     } finally {
       this.isLoading = false;
@@ -99,44 +98,45 @@ export class Login implements OnInit {
   }
 
   private async authenticateUser(credentials: LoginCredentials): Promise<LoginResponse> {
-  console.log('Enviando credenciales:', {
-    email: credentials.email,
-    password: credentials.password ? '***' : 'VACÍO'
-  });
+    console.log('🔐 Enviando credenciales a:', `${this.apiUrl}/../auth/login`);
+    console.log('📧 Email:', credentials.email);
 
-  try {
-    const response = await this.http.post<any>(`${this.apiUrl}/auth/login`, {
-      email: credentials.email,
-      password: credentials.password,
-      rememberMe: credentials.rememberMe
-    }).toPromise();
+    try {
+      // La URL de auth/login está fuera de /api, por eso usamos ..
+      const loginUrl = `${this.apiUrl}/auth/login`;
+      
+      const response = await this.http.post<any>(loginUrl, {
+        email: credentials.email,
+        password: credentials.password,
+        rememberMe: credentials.rememberMe
+      }).toPromise();
 
-    console.log('Login exitoso:', response);
-    return response as LoginResponse;
-  } catch (error: any) {
-    console.log('Error completo:', error);
-    console.log('Status:', error.status);
-    console.log('Mensaje del servidor:', error.error);
-    
-    if (error.status === 401) {
-      return {
-        success: false,
-        message: error.error?.message || 'Credenciales incorrectas'
-      };
-    } else if (error.status === 400) {
-      return {
-        success: false,
-        message: error.error?.message || 'Datos incompletos'
-      };
-    } else {
-      throw error;
+      console.log('✅ Login exitoso:', response);
+      return response as LoginResponse;
+    } catch (error: any) {
+      console.log('❌ Error completo:', error);
+      console.log('Status:', error.status);
+      console.log('Mensaje del servidor:', error.error);
+      
+      if (error.status === 401) {
+        return {
+          success: false,
+          message: error.error?.message || 'Credenciales incorrectas'
+        };
+      } else if (error.status === 400) {
+        return {
+          success: false,
+          message: error.error?.message || 'Datos incompletos'
+        };
+      } else {
+        throw error;
+      }
     }
   }
-}
+
   private validateForm(): boolean {
     let isValid = true;
 
-    // Validar email
     if (!this.credentials.email) {
       this.emailError = 'El email es requerido';
       isValid = false;
@@ -145,7 +145,6 @@ export class Login implements OnInit {
       isValid = false;
     }
 
-    // Validar password
     if (!this.credentials.password) {
       this.passwordError = 'La contraseña es requerida';
       isValid = false;
@@ -165,16 +164,14 @@ export class Login implements OnInit {
   private handleSuccessfulLogin(data: any, rememberMe: boolean) {
     const { user, access_token } = data;
 
-    // Almacenar token
     const storage = rememberMe ? localStorage : sessionStorage;
     storage.setItem('cinemax_token', access_token);
     storage.setItem('cinemax_user', JSON.stringify(user));
 
     this.showAlert(`¡Bienvenido ${user.name}!`, 'success');
 
-    // Redirigir al dashboard después de 1.5 segundos
     setTimeout(() => {
-      this.router.navigate(['/dashboard']); // Cambiado a dashboard
+      this.router.navigate(['/dashboard']);
     }, 1500);
   }
 
@@ -186,7 +183,6 @@ export class Login implements OnInit {
     this.alertMessage = message;
     this.alertType = type;
 
-    // Limpiar alerta después de 5 segundos
     setTimeout(() => {
       this.alertMessage = '';
     }, 5000);
@@ -197,7 +193,6 @@ export class Login implements OnInit {
     this.passwordError = '';
   }
 
-  // Métodos públicos para el template
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
   }
@@ -218,17 +213,20 @@ export class Login implements OnInit {
 
   private async checkConnection() {
     try {
-      // Verificar conexión con tu servidor Flask
-      const response = await this.http.get(`${this.apiUrl.replace('/api', '')}`).toPromise();
+      // Verificar conexión con AWS Lambda - usar la base URL sin /api
+      const baseUrl = this.apiUrl.replace('/api', '');
+      const response = await this.http.get(`${baseUrl}`).toPromise();
       this.connectionStatus = {
         isOnline: true,
-        message: 'Conectado'
+        message: 'Conectado a AWS'
       };
+      console.log('✅ Conexión establecida con AWS Lambda');
     } catch (error) {
       this.connectionStatus = {
         isOnline: false,
         message: 'Sin conexión'
       };
+      console.warn('⚠️ No se pudo conectar con AWS Lambda');
     }
   }
 

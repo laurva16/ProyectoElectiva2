@@ -1,0 +1,26 @@
+{
+    "dev": {
+        "app_function": "server.app",
+        "aws_region": "us-east-1",
+        "profile_name": "default",
+        "project_name": "cinemax-api",
+        "runtime": "python3.10",
+        "s3_bucket": "cinemax-lambda-deployment-2024",
+        "timeout": 60,
+        "memory_size": 1024,
+        "ephemeral_storage": 1024,
+        "environment_variables": {
+            "FLASK_ENV": "production",
+            "DEBUG": "False",
+            "MONGODB_URI": "mongodb+srv://brayanlopez07_db_user:og4ofPGbUK4WWwST@cinemaxcluster.7mrkjdk.mongodb.net/?retryWrites=true&w=majority&appName=CineMaxCluster",
+            "DATABASE_NAME": "cinemax_db",
+            "JWT_SECRET": "tu_clave_secreta_super_segura_2024",
+            "JWT_ALGORITHM": "HS256"
+        },
+        "cors": true,
+        "keep_warm": false,
+        "cloudwatch_log_level": "OFF",
+        "log_handler": "simple",
+        "exclude_logs": true
+    }
+}

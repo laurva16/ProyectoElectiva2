@@ -1,17 +1,21 @@
+// src/app/guards/auth.guard.ts
 import { Injectable } from '@angular/core';
 import { CanActivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { API_CONFIG } from '../api.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthGuard implements CanActivate {
-  private apiUrl = 'http://localhost:5000/api';
+  private apiUrl = API_CONFIG.BASE_URL;
 
   constructor(
     private router: Router,
     private http: HttpClient
-  ) {}
+  ) {
+    console.log('🔒 AuthGuard usando API:', this.apiUrl);
+  }
 
   async canActivate(
     route: ActivatedRouteSnapshot,
@@ -20,6 +24,7 @@ export class AuthGuard implements CanActivate {
     const token = this.getToken();
     
     if (!token) {
+      console.warn('⚠️ No hay token, redirigiendo a login');
       this.redirectToLogin();
       return false;
     }
@@ -28,11 +33,13 @@ export class AuthGuard implements CanActivate {
     const isValid = await this.verifyToken(token);
     
     if (!isValid) {
+      console.warn('⚠️ Token inválido, limpiando sesión');
       this.clearTokens();
       this.redirectToLogin();
       return false;
     }
 
+    console.log('✅ Token válido, acceso permitido');
     return true;
   }
 
@@ -51,7 +58,7 @@ export class AuthGuard implements CanActivate {
 
       return response && (response as any).success;
     } catch (error) {
-      console.error('Token verification failed:', error);
+      console.error('❌ Token verification failed:', error);
       return false;
     }
   }

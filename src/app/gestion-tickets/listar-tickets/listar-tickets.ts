@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { TicketsService } from '../../services/tickets.service';
 
 interface Ticket {
   id: number;
@@ -43,10 +43,8 @@ export class ListarTickets implements OnInit {
   showModal = false;
   ticketSeleccionado: Ticket | null = null;
 
-  private apiUrl = 'http://localhost:5000/api/tickets';
-
   constructor(
-    private http: HttpClient,
+    private ticketsService: TicketsService,
     private router: Router
   ) {}
 
@@ -75,14 +73,8 @@ export class ListarTickets implements OnInit {
 
   cargarTickets() {
     this.loading = true;
-    
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
 
-    this.http.get<any>(this.apiUrl, { headers }).subscribe({
+    this.ticketsService.obtenerTickets().subscribe({
       next: (response) => {
         this.loading = false;
         if (response.success) {
@@ -153,13 +145,7 @@ export class ListarTickets implements OnInit {
       return;
     }
 
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    this.http.delete(`${this.apiUrl}/${ticket.id}`, { headers }).subscribe({
+    this.ticketsService.eliminarTicket(ticket.id).subscribe({
       next: (response: any) => {
         if (response.success) {
           // Actualizar estado localmente

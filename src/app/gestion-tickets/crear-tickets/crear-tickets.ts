@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { TicketsService } from '../../services/tickets.service';
+import { PeliculasService } from '../../services/peliculas.service';
+import { SalasService } from '../../services/salas.service';
 
 interface Pelicula {
   id: number;
@@ -47,13 +49,11 @@ export class CrearTickets implements OnInit {
   loadingAsientos = false;
   mostrarAsientos = false;
 
-  private apiUrl = 'http://localhost:5000/api/tickets';
-  private peliculasUrl = 'http://localhost:5000/api/peliculas';
-  private salasUrl = 'http://localhost:5000/api/salas';
-
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    private ticketsService: TicketsService,
+    private peliculasService: PeliculasService,
+    private salasService: SalasService,
     private router: Router
   ) {}
 
@@ -83,14 +83,11 @@ export class CrearTickets implements OnInit {
   }
 
   cargarPeliculas() {
-    const token = this.getToken();
-    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
-
-    this.http.get<any>(this.peliculasUrl, { headers }).subscribe({
+    this.peliculasService.obtenerPeliculas().subscribe({
       next: (response) => {
         if (response.success) {
           // Debug: Ver todas las películas y sus estados
-          console.log('📽️ Total de películas recibidas:', response.data.length);
+          console.log('🎬 Total de películas recibidas:', response.data.length);
           console.log('Estados encontrados:', response.data.map((p: any) => `${p.titulo}: ${p.estado}`));
           
           // Filtrar películas disponibles para venta (cartelera y disponible)
@@ -116,10 +113,7 @@ export class CrearTickets implements OnInit {
   }
 
   cargarSalas() {
-    const token = this.getToken();
-    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
-
-    this.http.get<any>(this.salasUrl, { headers }).subscribe({
+    this.salasService.obtenerSalas().subscribe({
       next: (response) => {
         if (response.success) {
           this.salas = response.data.filter((s: any) => s.estado === 'activa');
@@ -157,11 +151,7 @@ export class CrearTickets implements OnInit {
     this.loadingAsientos = true;
     this.errorMessage = '';
 
-    const token = this.getToken();
-    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
-    const url = `${this.apiUrl}/disponibilidad?sala_id=${salaId}&fecha=${fecha}&hora=${hora}`;
-
-    this.http.get<any>(url, { headers }).subscribe({
+    this.ticketsService.verificarDisponibilidad(salaId, fecha, hora).subscribe({
       next: (response) => {
         this.loadingAsientos = false;
         if (response.success) {
@@ -194,13 +184,7 @@ export class CrearTickets implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const token = this.getToken();
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-
-    this.http.post(this.apiUrl, this.ticketForm.value, { headers }).subscribe({
+    this.ticketsService.crearTicket(this.ticketForm.value).subscribe({
       next: (response: any) => {
         this.loading = false;
         this.successMessage = 'Ticket creado exitosamente';
@@ -235,10 +219,6 @@ export class CrearTickets implements OnInit {
   isFieldInvalid(fieldName: string): boolean {
     const control = this.ticketForm.get(fieldName);
     return !!(control && control.invalid && (control.dirty || control.touched));
-  }
-
-  getToken(): string {
-    return localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token') || '';
   }
 
   volver() {

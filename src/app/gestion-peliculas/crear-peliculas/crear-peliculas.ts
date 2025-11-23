@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { PeliculasService } from '../../services/peliculas.service';
 
 interface Pelicula {
   titulo: string;
@@ -49,11 +49,9 @@ export class CrearPeliculas implements OnInit {
   clasificaciones = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
   estados = ['disponible', 'cartelera', 'proximamente'];
 
-  private apiUrl = 'http://localhost:5000/api/peliculas';
-
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    private peliculasService: PeliculasService,
     private router: Router
   ) {}
 
@@ -97,16 +95,9 @@ export class CrearPeliculas implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-
     const peliculaData: Pelicula = this.peliculaForm.value;
 
-    this.http.post(this.apiUrl, peliculaData, { headers }).subscribe({
+    this.peliculasService.crearPelicula(peliculaData).subscribe({
       next: (response: any) => {
         this.loading = false;
         this.successMessage = 'Película creada exitosamente';

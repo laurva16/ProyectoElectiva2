@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { UsuariosService } from '../../services/usuarios.service';
 
 interface Usuario {
   id?: number;
@@ -19,7 +19,7 @@ interface Usuario {
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './listar-usuarios.html',
-  styleUrls: ['./listar-usuarios.css']  // ← Array con 's'
+  styleUrls: ['./listar-usuarios.css']
 })
 export class ListarUsuarios implements OnInit {
   usuarios: Usuario[] = [];
@@ -30,10 +30,8 @@ export class ListarUsuarios implements OnInit {
   roles: string[] = [];
   usuarioSeleccionado: Usuario | null = null;
 
-  private apiUrl = 'http://localhost:5000/api/usuarios';
-
   constructor(
-    private http: HttpClient,
+    private usuariosService: UsuariosService,
     private router: Router
   ) {}
 
@@ -43,15 +41,8 @@ export class ListarUsuarios implements OnInit {
 
   cargarUsuarios() {
     this.loading = true;
-    
-    const token = localStorage.getItem('cinemax_token') || 
-                  sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
 
-    this.http.get<any>(this.apiUrl, { headers }).subscribe({
+    this.usuariosService.obtenerUsuarios().subscribe({
       next: (response) => {
         this.usuarios = response.data || [];
         this.usuariosFiltrados = [...this.usuarios];
@@ -173,14 +164,7 @@ export class ListarUsuarios implements OnInit {
       return;
     }
 
-    const token = localStorage.getItem('cinemax_token') || 
-                  sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    this.http.delete(`${this.apiUrl}/${id}`, { headers }).subscribe({
+    this.usuariosService.eliminarUsuario(id).subscribe({
       next: (response: any) => {
         console.log('Usuario eliminado:', response);
         this.cargarUsuarios();

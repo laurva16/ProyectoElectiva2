@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { SalasService } from '../../services/salas.service';
 
 interface Sala {
   nombre: string;
@@ -33,11 +33,9 @@ export class CrearSalas implements OnInit {
   tecnologias = ['2D', '3D', 'IMAX', 'IMAX 3D', '4DX', 'Dolby Atmos'];
   estados = ['activa', 'mantenimiento', 'inactiva'];
 
-  private apiUrl = 'http://localhost:5000/api/salas';
-
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    private salasService: SalasService,
     private router: Router
   ) {}
 
@@ -84,16 +82,9 @@ export class CrearSalas implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-
     const salaData: Sala = this.salaForm.value;
 
-    this.http.post(this.apiUrl, salaData, { headers }).subscribe({
+    this.salasService.crearSala(salaData).subscribe({
       next: (response: any) => {
         this.loading = false;
         this.successMessage = 'Sala creada exitosamente';

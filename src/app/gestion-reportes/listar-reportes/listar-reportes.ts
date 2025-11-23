@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { ReportesService } from '../../services/reportes.service';
 
 interface VentaData {
   cantidad: number;
@@ -42,10 +42,8 @@ export class ListarReportes implements OnInit {
   
   reporteData: ReporteData | null = null;
 
-  private apiUrl = 'http://localhost:5000/api/reportes';
-
   constructor(
-    private http: HttpClient,
+    private reportesService: ReportesService,
     private router: Router
   ) {}
 
@@ -71,7 +69,7 @@ export class ListarReportes implements OnInit {
   }
 
   generarReporte() {
-    console.log('🔄 Generando reporte...');
+    console.log('📄 Generando reporte...');
     
     if (!this.fechaInicio || !this.fechaFin) {
       this.errorMessage = 'Por favor selecciona ambas fechas';
@@ -87,21 +85,9 @@ export class ListarReportes implements OnInit {
     this.errorMessage = '';
     this.reporteData = null;
     
-    const token = this.getToken();
-    
-    if (!token) {
-      this.errorMessage = 'No se encontró token de autenticación';
-      this.loading = false;
-      return;
-    }
+    console.log('🌐 Generando reporte con fechas:', this.fechaInicio, this.fechaFin);
 
-    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
-    
-    const url = `${this.apiUrl}/ventas?fecha_inicio=${this.fechaInicio}&fecha_fin=${this.fechaFin}`;
-    
-    console.log('🌐 URL del reporte:', url);
-
-    this.http.get<ApiResponse>(url, { headers }).subscribe({
+    this.reportesService.generarReporteVentas(this.fechaInicio, this.fechaFin).subscribe({
       next: (response) => {
         console.log('✅ Respuesta del servidor:', response);
         this.loading = false;
@@ -136,23 +122,8 @@ export class ListarReportes implements OnInit {
 
     this.loading = true;
     this.errorMessage = '';
-    
-    const token = this.getToken();
-    
-    if (!token) {
-      this.errorMessage = 'No se encontró token de autenticación';
-      this.loading = false;
-      return;
-    }
 
-    const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
-    
-    const url = `${this.apiUrl}/ventas/pdf?fecha_inicio=${this.fechaInicio}&fecha_fin=${this.fechaFin}`;
-
-    this.http.get(url, { 
-      headers, 
-      responseType: 'blob' 
-    }).subscribe({
+    this.reportesService.descargarReportePDF(this.fechaInicio, this.fechaFin).subscribe({
       next: (blob) => {
         console.log('✅ PDF descargado');
         this.loading = false;
@@ -173,12 +144,6 @@ export class ListarReportes implements OnInit {
         this.errorMessage = error.error?.message || 'Error al descargar PDF';
       }
     });
-  }
-
-  getToken(): string {
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    console.log('🔑 Token encontrado:', token ? 'Sí' : 'No');
-    return token || '';
   }
 
   volver() {

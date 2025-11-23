@@ -1,7 +1,10 @@
+// ============================================
+// REEMPLAZAR: src/app/gestion-peliculas/listar-peliculas/listar-peliculas.ts
+// ============================================
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { PeliculasService } from '../../services/peliculas.service';
 
 interface Pelicula {
   id?: number;
@@ -35,18 +38,15 @@ export class ListarPeliculas implements OnInit {
   generos: string[] = [];
   peliculaSeleccionada: Pelicula | null = null;
   
-  // Usuario actual
   currentUser: any = null;
 
-  // Getter para verificar si es admin
   get isAdmin(): boolean {
     return this.currentUser?.role === 'admin';
   }
 
-  private apiUrl = 'http://localhost:5000/api/peliculas';
-
+  // ✅ USAR SERVICIO EN LUGAR DE HTTP DIRECTO
   constructor(
-    private http: HttpClient,
+    private peliculasService: PeliculasService,
     private router: Router
   ) {}
 
@@ -61,23 +61,20 @@ export class ListarPeliculas implements OnInit {
     
     if (userData) {
       this.currentUser = JSON.parse(userData);
+      console.log('👤 Usuario:', this.currentUser.name, '| Role:', this.currentUser.role);
     }
   }
 
   cargarPeliculas() {
     this.loading = true;
+    console.log('📽️ Cargando películas desde AWS...');
     
-    const token = localStorage.getItem('cinemax_token') || 
-                  sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    this.http.get<any>(this.apiUrl, { headers }).subscribe({
+    this.peliculasService.obtenerPeliculas().subscribe({
       next: (response) => {
+        console.log('✅ Respuesta recibida:', response);
         const peliculasBackend = response.data || [];
         
+        // Películas de respaldo (fallback)
         const peliculasEstaticas = [
           {
             id: 1,
@@ -125,6 +122,7 @@ export class ListarPeliculas implements OnInit {
           }
         ];
         
+        // Combinar películas del backend con las estáticas
         const peliculasCombinadas = [...peliculasBackend];
         
         peliculasEstaticas.forEach(peliEstatica => {
@@ -138,10 +136,15 @@ export class ListarPeliculas implements OnInit {
         this.peliculasFiltradas = [...this.peliculas];
         this.extraerGeneros();
         this.loading = false;
+        
+        console.log(`✅ ${this.peliculas.length} películas cargadas`);
       },
       error: (error) => {
-        console.error('Error al cargar películas:', error);
+        console.error('❌ Error al cargar películas:', error);
+        console.error('   Status:', error.status);
+        console.error('   URL intentada:', error.url);
         
+        // Usar solo películas estáticas como fallback
         this.peliculas = [
           {
             id: 1,
@@ -170,6 +173,8 @@ export class ListarPeliculas implements OnInit {
         this.peliculasFiltradas = [...this.peliculas];
         this.extraerGeneros();
         this.loading = false;
+        
+        console.warn('⚠️ Usando películas de respaldo');
       }
     });
   }
@@ -238,7 +243,6 @@ export class ListarPeliculas implements OnInit {
       event.stopPropagation();
     }
     
-    // Verificar permisos antes de navegar
     if (!this.isAdmin) {
       alert('No tienes permisos para editar películas');
       return;
@@ -252,7 +256,6 @@ export class ListarPeliculas implements OnInit {
       event.stopPropagation();
     }
 
-    // Verificar permisos antes de eliminar
     if (!this.isAdmin) {
       alert('No tienes permisos para eliminar películas');
       return;
@@ -262,28 +265,22 @@ export class ListarPeliculas implements OnInit {
       return;
     }
 
-    const token = localStorage.getItem('cinemax_token') || 
-                  sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
+    console.log(`🗑️ Eliminando película ID: ${id}`);
 
-    this.http.delete(`${this.apiUrl}/${id}`, { headers }).subscribe({
+    this.peliculasService.eliminarPelicula(id).subscribe({
       next: (response: any) => {
-        console.log('Película eliminada:', response);
+        console.log('✅ Película eliminada:', response);
         this.cargarPeliculas();
         alert('Película eliminada exitosamente');
       },
       error: (error) => {
-        console.error('Error al eliminar película:', error);
+        console.error('❌ Error al eliminar película:', error);
         alert('Error al eliminar la película: ' + (error.error?.message || 'Intenta nuevamente'));
       }
     });
   }
 
   crearNuevaPelicula() {
-    // Verificar permisos antes de navegar
     if (!this.isAdmin) {
       alert('No tienes permisos para crear películas');
       return;

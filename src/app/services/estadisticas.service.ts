@@ -1,23 +1,17 @@
-// src/app/services/estadisticas.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
-interface EstadisticasRapidas {
-  total_peliculas: number;
-  tickets_vendidos_hoy: number;
-  total_salas: number;
-  total_usuarios: number;
-  ingresos_hoy: number;
-}
+import { API_CONFIG } from '../app.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class EstadisticasService {
-  private apiUrl = 'http://localhost:5000/api';
+  private apiUrl = API_CONFIG.BASE_URL; // ✅ Solo BASE_URL, sin /api extra
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    console.log('📡 EstadisticasService usando:', this.apiUrl);
+  }
 
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('cinemax_token') || 

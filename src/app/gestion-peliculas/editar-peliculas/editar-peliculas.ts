@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { PeliculasService } from '../../services/peliculas.service';
 
 interface Pelicula {
   id?: number;
@@ -52,11 +52,9 @@ export class EditarPeliculas implements OnInit {
   clasificaciones = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
   estados = ['disponible', 'cartelera', 'proximamente'];
 
-  private apiUrl = 'http://localhost:5000/api/peliculas';
-
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    private peliculasService: PeliculasService,
     private router: Router,
     private route: ActivatedRoute
   ) {}
@@ -92,13 +90,8 @@ export class EditarPeliculas implements OnInit {
 
   cargarPelicula() {
     this.loadingData = true;
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
 
-    this.http.get<any>(`${this.apiUrl}/${this.peliculaId}`, { headers }).subscribe({
+    this.peliculasService.obtenerPeliculaPorId(this.peliculaId).subscribe({
       next: (response) => {
         this.loadingData = false;
         const pelicula = response.data;
@@ -138,16 +131,9 @@ export class EditarPeliculas implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-
     const peliculaData: Pelicula = this.peliculaForm.value;
 
-    this.http.put(`${this.apiUrl}/${this.peliculaId}`, peliculaData, { headers }).subscribe({
+    this.peliculasService.actualizarPelicula(this.peliculaId, peliculaData).subscribe({
       next: (response: any) => {
         this.loading = false;
         this.successMessage = 'Película actualizada exitosamente';

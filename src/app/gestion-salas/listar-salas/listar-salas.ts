@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { SalasService } from '../../services/salas.service';
 
 interface Sala {
   id: number;
@@ -48,10 +48,8 @@ export class ListarSalas implements OnInit {
     return this.currentUser?.role === 'admin';
   }
 
-  private apiUrl = 'http://localhost:5000/api/salas';
-
   constructor(
-    private http: HttpClient,
+    private salasService: SalasService,
     private router: Router
   ) {}
 
@@ -71,14 +69,8 @@ export class ListarSalas implements OnInit {
 
   cargarSalas() {
     this.loading = true;
-    
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
 
-    this.http.get<any>(this.apiUrl, { headers }).subscribe({
+    this.salasService.obtenerSalas().subscribe({
       next: (response) => {
         this.loading = false;
         if (response.success) {
@@ -149,13 +141,7 @@ export class ListarSalas implements OnInit {
       return;
     }
 
-    const token = localStorage.getItem('cinemax_token') || sessionStorage.getItem('cinemax_token');
-    
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    this.http.delete(`${this.apiUrl}/${sala.id}`, { headers }).subscribe({
+    this.salasService.eliminarSala(sala.id).subscribe({
       next: (response: any) => {
         if (response.success) {
           this.salas = this.salas.filter(s => s.id !== sala.id);
